@@ -15,8 +15,8 @@ import {allowSanitizationBypassAndThrow, BypassType, unwrapSafeValue} from './by
 import {_sanitizeHtml as _sanitizeHtml} from './html_sanitizer';
 import {Sanitizer} from './sanitizer';
 import {SecurityContext} from './security';
+import {getTrustedTypesPolicy} from './trusted_types';
 import {_sanitizeUrl as _sanitizeUrl} from './url_sanitizer';
-
 
 
 /**
@@ -34,10 +34,11 @@ import {_sanitizeUrl as _sanitizeUrl} from './url_sanitizer';
  *
  * @codeGenApi
  */
-export function ɵɵsanitizeHtml(unsafeHtml: any): string {
+export function ɵɵsanitizeHtml(unsafeHtml: any): string|TrustedHTML {
   const sanitizer = getSanitizer();
   if (sanitizer) {
-    return sanitizer.sanitize(SecurityContext.HTML, unsafeHtml) || '';
+    return sanitizer.sanitize(SecurityContext.HTML, unsafeHtml) ||
+        (window.trustedTypes?.emptyHTML ?? '');
   }
   if (allowSanitizationBypassAndThrow(unsafeHtml, BypassType.Html)) {
     return unwrapSafeValue(unsafeHtml);
@@ -105,7 +106,7 @@ export function ɵɵsanitizeUrl(unsafeUrl: any): string {
  *
  * @codeGenApi
  */
-export function ɵɵsanitizeResourceUrl(unsafeResourceUrl: any): string {
+export function ɵɵsanitizeResourceUrl(unsafeResourceUrl: any): string|TrustedScriptURL {
   const sanitizer = getSanitizer();
   if (sanitizer) {
     return sanitizer.sanitize(SecurityContext.RESOURCE_URL, unsafeResourceUrl) || '';
@@ -128,15 +129,37 @@ export function ɵɵsanitizeResourceUrl(unsafeResourceUrl: any): string {
  *
  * @codeGenApi
  */
-export function ɵɵsanitizeScript(unsafeScript: any): string {
+export function ɵɵsanitizeScript(unsafeScript: any): string|TrustedScript {
   const sanitizer = getSanitizer();
   if (sanitizer) {
-    return sanitizer.sanitize(SecurityContext.SCRIPT, unsafeScript) || '';
+    return sanitizer.sanitize(SecurityContext.SCRIPT, unsafeScript) ||
+        (window.trustedTypes?.emptyScript ?? '');
   }
   if (allowSanitizationBypassAndThrow(unsafeScript, BypassType.Script)) {
     return unwrapSafeValue(unsafeScript);
   }
   throw new Error('unsafe value used in a script context');
+}
+
+export function ɵɵtrustHtml(html: TemplateStringsArray): string|TrustedHTML {
+  if (html.length !== 1) {
+    throw new Error('unexpected interpolation in trustHtml');
+  }
+  return getTrustedTypesPolicy()?.createHTML(html[0]) ?? html[0];
+}
+
+export function ɵɵtrustScript(script: TemplateStringsArray): string|TrustedScript {
+  if (script.length !== 1) {
+    throw new Error('unexpected interpolation in trustScript');
+  }
+  return getTrustedTypesPolicy()?.createScript(script[0]) ?? script[0];
+}
+
+export function ɵɵtrustResourceUrl(url: TemplateStringsArray): string|TrustedScriptURL {
+  if (url.length !== 1) {
+    throw new Error('unexpected interpolation in trustResourceUrl');
+  }
+  return getTrustedTypesPolicy()?.createScriptURL(url[0]) ?? url[0];
 }
 
 /**

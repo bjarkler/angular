@@ -8,11 +8,12 @@
 
 import {NgForOfContext} from '@angular/common';
 import {getSortedClassName} from '@angular/core/testing/src/styling';
+import {trustedHTMLForTest, trustedScriptForTest, trustedScriptURLForTest} from '@angular/core/testing';
 
 import {ɵɵdefineComponent} from '../../src/render3/definition';
 import {RenderFlags, ɵɵadvance, ɵɵattribute, ɵɵclassMap, ɵɵelement, ɵɵelementEnd, ɵɵelementStart, ɵɵproperty, ɵɵstyleMap, ɵɵstyleProp, ɵɵtemplate, ɵɵtext, ɵɵtextInterpolate1} from '../../src/render3/index';
 import {AttributeMarker} from '../../src/render3/interfaces/node';
-import {bypassSanitizationTrustHtml, bypassSanitizationTrustResourceUrl, bypassSanitizationTrustScript, bypassSanitizationTrustStyle, bypassSanitizationTrustUrl, getSanitizationBypassType, SafeValue, unwrapSafeValue} from '../../src/sanitization/bypass';
+import {allowSanitizationBypassAndThrow, BypassType, bypassSanitizationTrustHtml, bypassSanitizationTrustResourceUrl, bypassSanitizationTrustScript, bypassSanitizationTrustStyle, bypassSanitizationTrustUrl, getSanitizationBypassType, SafeValue, unwrapSafeValue} from '../../src/sanitization/bypass';
 import {ɵɵsanitizeHtml, ɵɵsanitizeResourceUrl, ɵɵsanitizeScript, ɵɵsanitizeStyle, ɵɵsanitizeUrl} from '../../src/sanitization/sanitization';
 import {Sanitizer} from '../../src/sanitization/sanitizer';
 import {SecurityContext} from '../../src/sanitization/security';
@@ -361,7 +362,7 @@ describe('instructions', () => {
     });
 
     it('should work for resourceUrl sanitization', () => {
-      const s = new LocalMockSanitizer(value => `${value}-sanitized`);
+      const s = new LocalMockSanitizer(value => trustedScriptURLForTest(`${value}-sanitized`));
       const t = new TemplateFixture(createScript, undefined, 1, 1, null, null, s);
       const inputValue = 'http://resource';
       const outputValue = 'http://resource-sanitized';
@@ -376,7 +377,7 @@ describe('instructions', () => {
     it('should bypass resourceUrl sanitization if marked by the service', () => {
       const s = new LocalMockSanitizer(value => '');
       const t = new TemplateFixture(createScript, undefined, 1, 1, null, null, s);
-      const inputValue = s.bypassSecurityTrustResourceUrl('file://all-my-secrets.pdf');
+      const inputValue = s.bypassSecurityTrustResourceUrl(trustedScriptURLForTest('file://all-my-secrets.pdf'));
       const outputValue = 'file://all-my-secrets.pdf';
 
       t.update(() => {
@@ -389,7 +390,7 @@ describe('instructions', () => {
     it('should bypass ivy-level resourceUrl sanitization if a custom sanitizer is used', () => {
       const s = new LocalMockSanitizer(value => '');
       const t = new TemplateFixture(createScript, undefined, 1, 1, null, null, s);
-      const inputValue = bypassSanitizationTrustResourceUrl('file://all-my-secrets.pdf');
+      const inputValue = bypassSanitizationTrustResourceUrl(trustedScriptURLForTest('file://all-my-secrets.pdf'));
       const outputValue = 'file://all-my-secrets.pdf-ivy';
 
       t.update(() => {
@@ -400,13 +401,13 @@ describe('instructions', () => {
     });
 
     it('should work for script sanitization', () => {
-      const s = new LocalMockSanitizer(value => `${value} //sanitized`);
+      const s = new LocalMockSanitizer(value => trustedScriptForTest(`${value} //sanitized`));
       const t = new TemplateFixture(createScript, undefined, 1, 1, null, null, s);
       const inputValue = 'fn();';
       const outputValue = 'fn(); //sanitized';
 
       t.update(() => {
-        ɵɵproperty('innerHTML', inputValue, ɵɵsanitizeScript);
+        ɵɵproperty('textContent', inputValue, ɵɵsanitizeScript);
       });
       expect(t.html).toEqual(`<script>${outputValue}</script>`);
       expect(s.lastSanitizedValue).toEqual(outputValue);
@@ -415,11 +416,11 @@ describe('instructions', () => {
     it('should bypass script sanitization if marked by the service', () => {
       const s = new LocalMockSanitizer(value => '');
       const t = new TemplateFixture(createScript, undefined, 1, 1, null, null, s);
-      const inputValue = s.bypassSecurityTrustScript('alert("bar")');
+      const inputValue = s.bypassSecurityTrustScript(trustedScriptForTest('alert("bar")'));
       const outputValue = 'alert("bar")';
 
       t.update(() => {
-        ɵɵproperty('innerHTML', inputValue, ɵɵsanitizeScript);
+        ɵɵproperty('textContent', inputValue, ɵɵsanitizeScript);
       });
       expect(t.html).toEqual(`<script>${outputValue}</script>`);
       expect(s.lastSanitizedValue).toBeFalsy();
@@ -428,18 +429,18 @@ describe('instructions', () => {
     it('should bypass ivy-level script sanitization if a custom sanitizer is used', () => {
       const s = new LocalMockSanitizer(value => '');
       const t = new TemplateFixture(createScript, undefined, 1, 1, null, null, s);
-      const inputValue = bypassSanitizationTrustScript('alert("bar")');
+      const inputValue = bypassSanitizationTrustScript(trustedScriptForTest('alert("bar")'));
       const outputValue = 'alert("bar")-ivy';
 
       t.update(() => {
-        ɵɵproperty('innerHTML', inputValue, ɵɵsanitizeScript);
+        ɵɵproperty('textContent', inputValue, ɵɵsanitizeScript);
       });
       expect(t.html).toEqual(`<script>${outputValue}</script>`);
       expect(s.lastSanitizedValue).toBeFalsy();
     });
 
     it('should work for html sanitization', () => {
-      const s = new LocalMockSanitizer(value => `${value} <!--sanitized-->`);
+      const s = new LocalMockSanitizer(value => trustedHTMLForTest(`${value} <!--sanitized-->`));
       const t = new TemplateFixture(createDiv, undefined, 1, 1, null, null, s);
       const inputValue = '<header></header>';
       const outputValue = '<header></header> <!--sanitized-->';
@@ -454,7 +455,7 @@ describe('instructions', () => {
     it('should bypass html sanitization if marked by the service', () => {
       const s = new LocalMockSanitizer(value => '');
       const t = new TemplateFixture(createDiv, undefined, 1, 1, null, null, s);
-      const inputValue = s.bypassSecurityTrustHtml('<div onclick="alert(123)"></div>');
+      const inputValue = s.bypassSecurityTrustHtml(trustedHTMLForTest('<div onclick="alert(123)"></div>'));
       const outputValue = '<div onclick="alert(123)"></div>';
 
       t.update(() => {
@@ -467,7 +468,7 @@ describe('instructions', () => {
     it('should bypass ivy-level script sanitization if a custom sanitizer is used', () => {
       const s = new LocalMockSanitizer(value => '');
       const t = new TemplateFixture(createDiv, undefined, 1, 1, null, null, s);
-      const inputValue = bypassSanitizationTrustHtml('<div onclick="alert(123)"></div>');
+      const inputValue = bypassSanitizationTrustHtml(trustedHTMLForTest('<div onclick="alert(123)"></div>'));
       const outputValue = '<div onclick="alert(123)"></div>-ivy';
 
       t.update(() => {
@@ -480,7 +481,7 @@ describe('instructions', () => {
 });
 
 class LocalSanitizedValue {
-  constructor(public value: any) {}
+  constructor(public value: string|TrustedHTML|TrustedScript|TrustedScriptURL) {}
 
   toString() {
     return this.value;
@@ -491,21 +492,48 @@ class LocalMockSanitizer implements Sanitizer {
   // TODO(issue/24571): remove '!'.
   public lastSanitizedValue!: string|null;
 
-  constructor(private _interceptor: (value: string|null|any) => string) {}
+  constructor(private _interceptor: (value: string|null|any) => string|TrustedHTML|TrustedScript|TrustedScriptURL) {}
 
-  sanitize(context: SecurityContext, value: LocalSanitizedValue|string|null|any): string|null {
-    if (getSanitizationBypassType(value) != null) {
-      return unwrapSafeValue(value) + '-ivy';
+  sanitize(context: SecurityContext.HTML, value: {}|string|null): string|TrustedHTML|null;
+  sanitize(context: SecurityContext.SCRIPT, value: {}|string|null): string|TrustedScript|null;
+  sanitize(context: SecurityContext.RESOURCE_URL, value: {}|string|null): string
+      |TrustedScriptURL|null;
+  sanitize(context: SecurityContext, value: {}|string|null): string|null;
+  sanitize(context: SecurityContext, value: LocalSanitizedValue|string|null|any): string|TrustedHTML
+      |TrustedScript|TrustedScriptURL|null {
+
+    // TODO: Make sure unwrapped values are wrapped in the same trusted type (or not at all)
+    if (context === SecurityContext.HTML &&
+        allowSanitizationBypassAndThrow(value, BypassType.Html)) {
+      return trustedHTMLForTest(unwrapSafeValue<string>(value).toString() + '-ivy');
+    }
+    if (context === SecurityContext.SCRIPT &&
+        allowSanitizationBypassAndThrow(value, BypassType.Script)) {
+      return trustedScriptForTest(unwrapSafeValue<string>(value).toString() + '-ivy');
+    }
+    if (context === SecurityContext.STYLE &&
+        allowSanitizationBypassAndThrow(value, BypassType.Style)) {
+      return unwrapSafeValue<string>(value).toString() + '-ivy';
+    }
+    if (context === SecurityContext.URL &&
+        allowSanitizationBypassAndThrow(value, BypassType.Url)) {
+      return unwrapSafeValue<string>(value).toString() + '-ivy';
+    }
+    if (context === SecurityContext.RESOURCE_URL &&
+        allowSanitizationBypassAndThrow(value, BypassType.ResourceUrl)) {
+      return trustedScriptURLForTest(unwrapSafeValue<string>(value).toString() + '-ivy');
     }
 
     if (value instanceof LocalSanitizedValue) {
-      return value.toString();
+      return value.value;
     }
 
-    return this.lastSanitizedValue = this._interceptor(value);
+    const sanitizedValue = this._interceptor(value);
+    this.lastSanitizedValue = sanitizedValue.toString();
+    return sanitizedValue;
   }
 
-  bypassSecurityTrustHtml(value: string) {
+  bypassSecurityTrustHtml(value: string|TrustedHTML) {
     return new LocalSanitizedValue(value);
   }
 
@@ -513,7 +541,7 @@ class LocalMockSanitizer implements Sanitizer {
     return new LocalSanitizedValue(value);
   }
 
-  bypassSecurityTrustScript(value: string) {
+  bypassSecurityTrustScript(value: string|TrustedScript) {
     return new LocalSanitizedValue(value);
   }
 
@@ -521,7 +549,7 @@ class LocalMockSanitizer implements Sanitizer {
     return new LocalSanitizedValue(value);
   }
 
-  bypassSecurityTrustResourceUrl(value: string) {
+  bypassSecurityTrustResourceUrl(value: string|TrustedScriptURL) {
     return new LocalSanitizedValue(value);
   }
 }

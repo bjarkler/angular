@@ -96,7 +96,15 @@ export abstract class DomSanitizer implements Sanitizer {
    * by replacing URLs that have an unsafe protocol part (such as `javascript:`). The implementation
    * is responsible to make sure that the value can definitely be safely used in the given context.
    */
-  abstract sanitize(context: SecurityContext, value: SafeValue|string|null): string|null;
+  abstract sanitize(ctx: SecurityContext.HTML, value: SafeValue|string|null): string|TrustedHTML
+      |null;
+  abstract sanitize(ctx: SecurityContext.SCRIPT, value: SafeValue|string|null): string|TrustedScript
+      |null;
+  abstract sanitize(ctx: SecurityContext.RESOURCE_URL, value: SafeValue|string|null): string
+      |TrustedScriptURL|null;
+  abstract sanitize(ctx: SecurityContext, value: SafeValue|string|null): string|null;
+  abstract sanitize(ctx: SecurityContext, value: SafeValue|string|null): string|TrustedHTML
+      |TrustedScript|TrustedScriptURL|null;
 
   /**
    * Bypass security and trust the given value to be safe HTML. Only use this when the bound HTML
@@ -153,7 +161,13 @@ export class DomSanitizerImpl extends DomSanitizer {
     super();
   }
 
-  sanitize(ctx: SecurityContext, value: SafeValue|string|null): string|null {
+  sanitize(ctx: SecurityContext.HTML, value: SafeValue|string|null): string|TrustedHTML|null;
+  sanitize(ctx: SecurityContext.SCRIPT, value: SafeValue|string|null): string|TrustedScript|null;
+  sanitize(ctx: SecurityContext.RESOURCE_URL, value: SafeValue|string|null): string|TrustedScriptURL
+      |null;
+  sanitize(ctx: SecurityContext, value: SafeValue|string|null): string|null;
+  sanitize(ctx: SecurityContext, value: SafeValue|string|null): string|TrustedHTML|TrustedScript
+      |TrustedScriptURL|null {
     if (value == null) return null;
     switch (ctx) {
       case SecurityContext.NONE:
@@ -190,19 +204,19 @@ export class DomSanitizerImpl extends DomSanitizer {
     }
   }
 
-  bypassSecurityTrustHtml(value: string): SafeHtml {
+  bypassSecurityTrustHtml(value: string|TrustedHTML): SafeHtml {
     return bypassSanitizationTrustHtml(value);
   }
   bypassSecurityTrustStyle(value: string): SafeStyle {
     return bypassSanitizationTrustStyle(value);
   }
-  bypassSecurityTrustScript(value: string): SafeScript {
+  bypassSecurityTrustScript(value: string|TrustedScript): SafeScript {
     return bypassSanitizationTrustScript(value);
   }
   bypassSecurityTrustUrl(value: string): SafeUrl {
     return bypassSanitizationTrustUrl(value);
   }
-  bypassSecurityTrustResourceUrl(value: string): SafeResourceUrl {
+  bypassSecurityTrustResourceUrl(value: string|TrustedScriptURL): SafeResourceUrl {
     return bypassSanitizationTrustResourceUrl(value);
   }
 }
