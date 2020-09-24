@@ -10,6 +10,7 @@ import '../../util/ng_i18n_closure_mode';
 
 import {getTemplateContent, SRCSET_ATTRS, URI_ATTRS, VALID_ATTRS, VALID_ELEMENTS} from '../../sanitization/html_sanitizer';
 import {getInertBodyHelper} from '../../sanitization/inert_body';
+import {getTrustedTypesPolicy} from '../../sanitization/trusted_types';
 import {_sanitizeUrl, sanitizeSrcset} from '../../sanitization/url_sanitizer';
 import {addAllToArray} from '../../util/array_utils';
 import {assertEqual} from '../../util/assert';
@@ -524,7 +525,7 @@ export function parseICUBlock(pattern: string): IcuExpression {
 function parseIcuCase(
     unsafeHtml: string, parentIndex: number, nestedIcus: IcuExpression[], tIcus: TIcu[],
     expandoStartIndex: number): IcuCase {
-  const inertBodyHelper = getInertBodyHelper(getDocument());
+  const inertBodyHelper = getInertBodyHelper(getDocument(), getTrustedTypesPolicy());
   const inertBodyElement = inertBodyHelper.getInertBodyElement(unsafeHtml);
   if (!inertBodyElement) {
     throw new Error('Unable to generate inert body element');

@@ -290,6 +290,7 @@ export {
   ɵɵsanitizeStyle,
   ɵɵsanitizeUrl,
   ɵɵsanitizeUrlOrResourceUrl,
+  ɵɵtrustHtml,
 } from './sanitization/sanitization';
 export {
   noSideEffects as ɵnoSideEffects,

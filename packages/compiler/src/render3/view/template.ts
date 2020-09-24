@@ -1296,7 +1296,15 @@ export class TemplateDefinitionBuilder implements t.Visitor<void>, LocalResolver
       if (attr.name === NG_PROJECT_AS_ATTR_NAME) {
         ngProjectAsAttr = attr;
       }
-      attrExprs.push(...getAttributeNameLiterals(attr.name), asLiteral(attr.value));
+
+      let value = asLiteral(attr.value);
+      // TODO: Use the security contract module
+      if (attr.name === 'srcdoc') {
+        value = o.taggedTemplate(
+            o.importExpr(R3.trustHtml),
+            new o.TemplateLiteral([new o.TemplateLiteralElement(attr.value, attr.valueSpan)], []));
+      }
+      attrExprs.push(...getAttributeNameLiterals(attr.name), value);
     });
 
     // Keep ngProjectAs next to the other name, value pairs so we can verify that we match

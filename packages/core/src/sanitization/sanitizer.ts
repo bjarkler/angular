@@ -15,7 +15,12 @@ import {SecurityContext} from './security';
  * @publicApi
  */
 export abstract class Sanitizer {
-  abstract sanitize(context: SecurityContext, value: {}|string|null): string|null;
+  abstract sanitize(ctx: SecurityContext.HTML, value: {}|string|null): string|TrustedHTML|null;
+  abstract sanitize(ctx: SecurityContext.SCRIPT, value: {}|string|null): string|TrustedScript|null;
+  abstract sanitize(ctx: SecurityContext.RESOURCE_URL, value: {}|string|null): string
+      |TrustedScriptURL|null;
+  abstract sanitize(ctx: SecurityContext, value: {}|string|null): string|null;
+
   /** @nocollapse */
   static ɵprov = ɵɵdefineInjectable({
     token: Sanitizer,

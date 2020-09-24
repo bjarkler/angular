@@ -320,4 +320,5 @@ export class Identifiers {
   static sanitizeUrl: o.ExternalReference = {name: 'ɵɵsanitizeUrl', moduleName: CORE};
   static sanitizeUrlOrResourceUrl:
       o.ExternalReference = {name: 'ɵɵsanitizeUrlOrResourceUrl', moduleName: CORE};
+  static trustHtml: o.ExternalReference = {name: 'ɵɵtrustHtml', moduleName: CORE};
 }

@@ -8,6 +8,7 @@
 
 import {isDevMode} from '../util/is_dev_mode';
 import {getInertBodyHelper, InertBodyHelper} from './inert_body';
+import {getTrustedTypesPolicy} from './trusted_types';
 import {_sanitizeUrl, sanitizeSrcset} from './url_sanitizer';
 
 function tagSet(tags: string): {[k: string]: boolean} {
@@ -242,10 +243,10 @@ let inertBodyHelper: InertBodyHelper;
  * Sanitizes the given unsafe, untrusted HTML fragment, and returns HTML text that is safe to add to
  * the DOM in a browser environment.
  */
-export function _sanitizeHtml(defaultDoc: any, unsafeHtmlInput: string): string {
+export function _sanitizeHtml(defaultDoc: any, unsafeHtmlInput: string): string|TrustedHTML {
   let inertBodyElement: HTMLElement|null = null;
   try {
-    inertBodyHelper = inertBodyHelper || getInertBodyHelper(defaultDoc);
+    inertBodyHelper = inertBodyHelper || getInertBodyHelper(defaultDoc, getTrustedTypesPolicy());
     // Make sure unsafeHtml is actually a string (TypeScript types are not enforced at runtime).
     let unsafeHtml = unsafeHtmlInput ? String(unsafeHtmlInput) : '';
     inertBodyElement = inertBodyHelper.getInertBodyElement(unsafeHtml);
@@ -274,7 +275,7 @@ export function _sanitizeHtml(defaultDoc: any, unsafeHtmlInput: string): string 
           'WARNING: sanitizing HTML stripped some content, see http://g.co/ng/security#xss');
     }
 
-    return safeHtml;
+    return getTrustedTypesPolicy()?.createHTML(safeHtml) ?? safeHtml;
   } finally {
     // In case anything goes wrong, clear out inertElement to reset the entire DOM structure.
     if (inertBodyElement) {
