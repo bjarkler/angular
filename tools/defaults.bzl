@@ -244,6 +244,7 @@ def karma_web_test_suite(name, **kwargs):
         name = name,
         runtime_deps = runtime_deps,
         bootstrap = bootstrap,
+        config_file = "//:karma.conf.js",
         deps = deps,
         browsers = [
             "//dev-infra/browsers/chromium:chromium",
