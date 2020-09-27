@@ -66,7 +66,7 @@ export class Esm5RenderingFormatter extends EsmRenderingFormatter {
   printStatement(stmt: Statement, sourceFile: ts.SourceFile, importManager: ImportManager): string {
     const node = translateStatement(
         stmt, importManager,
-        {downlevelLocalizedStrings: true, downlevelVariableDeclarations: true});
+        {downlevelTaggedTemplates: true, downlevelVariableDeclarations: true});
     const code = this.printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
 
     return code;

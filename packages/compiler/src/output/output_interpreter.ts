@@ -197,6 +197,10 @@ class StatementInterpreter implements o.StatementVisitor, o.ExpressionVisitor {
       return fn.apply(null, args);
     }
   }
+  visitTaggedTemplateExpr(expr: o.TaggedTemplateExpr, ctx: _ExecutionContext): any {
+    // TODO: Do we need to implement this?
+    return null;
+  }
   visitReturnStmt(stmt: o.ReturnStatement, ctx: _ExecutionContext): any {
     return new ReturnValue(stmt.value.visitExpression(this, ctx));
   }

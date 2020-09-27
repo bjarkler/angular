@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AssertNotNull, BinaryOperator, BinaryOperatorExpr, BuiltinMethod, BuiltinVar, CastExpr, ClassStmt, CommaExpr, ConditionalExpr, DeclareFunctionStmt, DeclareVarStmt, ExpressionStatement, ExpressionVisitor, ExternalExpr, ExternalReference, FunctionExpr, IfStmt, InstantiateExpr, InvokeFunctionExpr, InvokeMethodExpr, LeadingComment, leadingComment, LiteralArrayExpr, LiteralExpr, LiteralMapExpr, LocalizedString, NotExpr, ParseSourceFile, ParseSourceSpan, PartialModule, ReadKeyExpr, ReadPropExpr, ReadVarExpr, ReturnStatement, Statement, StatementVisitor, StmtModifier, ThrowStmt, TryCatchStmt, TypeofExpr, UnaryOperator, UnaryOperatorExpr, WrappedNodeExpr, WriteKeyExpr, WritePropExpr, WriteVarExpr} from '@angular/compiler';
+import {AssertNotNull, BinaryOperator, BinaryOperatorExpr, BuiltinMethod, BuiltinVar, CastExpr, ClassStmt, CommaExpr, ConditionalExpr, DeclareFunctionStmt, DeclareVarStmt, ExpressionStatement, ExpressionVisitor, ExternalExpr, ExternalReference, FunctionExpr, IfStmt, InstantiateExpr, InvokeFunctionExpr, InvokeMethodExpr, LeadingComment, leadingComment, LiteralArrayExpr, LiteralExpr, LiteralMapExpr, LocalizedString, NotExpr, ParseSourceFile, ParseSourceSpan, PartialModule, ReadKeyExpr, ReadPropExpr, ReadVarExpr, ReturnStatement, Statement, StatementVisitor, StmtModifier, TaggedTemplateExpr, ThrowStmt, TryCatchStmt, TypeofExpr, UnaryOperator, UnaryOperatorExpr, WrappedNodeExpr, WriteKeyExpr, WritePropExpr, WriteVarExpr} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {attachComments} from '../ngtsc/translator';
@@ -542,6 +542,25 @@ export class NodeEmitterVisitor implements StatementVisitor, ExpressionVisitor {
         ts.createCall(
             expr.fn.visitExpression(this, null), /* typeArguments */ undefined,
             expr.args.map(arg => arg.visitExpression(this, null))));
+  }
+
+  visitTaggedTemplateExpr(expr: TaggedTemplateExpr): RecordedNode<ts.TaggedTemplateExpression> {
+    const elementCount = expr.template.elements.length;
+    const templateSpans: ts.TemplateSpan[] = [];
+    for (let i = 1; i < elementCount; i++) {
+      const element = expr.serializeTemplateElement(i),
+            literal = i < elementCount - 1 ? ts.createTemplateMiddle(element.cooked, element.raw) :
+                                             ts.createTemplateTail(element.cooked, element.raw);
+      templateSpans.push(ts.createTemplateSpan(
+          expr.template.expressions[i - 1].visitExpression(this, null), literal));
+    }
+    const headElement = expr.serializeTemplateElement(0);
+    return this.postProcess(
+        expr,
+        ts.createTaggedTemplate(
+            expr.tag.visitExpression(this, null), /* typeArguments */ undefined,
+            ts.createTemplateExpression(
+                ts.createTemplateHead(headElement.cooked, headElement.raw), templateSpans)));
   }
 
   visitInstantiateExpr(expr: InstantiateExpr): RecordedNode<ts.NewExpression> {

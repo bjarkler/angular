@@ -344,6 +344,17 @@ export abstract class AbstractEmitterVisitor implements o.StatementVisitor, o.Ex
     ctx.print(expr, `)`);
     return null;
   }
+  visitTaggedTemplateExpr(expr: o.TaggedTemplateExpr, ctx: EmitterVisitorContext): any {
+    expr.tag.visitExpression(this, ctx);
+    ctx.print(expr, '`' + expr.serializeTemplateElement(0).raw);
+    for (let i = 1; i < expr.template.elements.length; i++) {
+      ctx.print(expr, '${');
+      expr.template.expressions[i].visitExpression(this, ctx);
+      ctx.print(expr, `}${expr.serializeTemplateElement(i - 1).raw}`);
+    }
+    ctx.print(expr, '`');
+    return null;
+  }
   visitWrappedNodeExpr(ast: o.WrappedNodeExpr<any>, ctx: EmitterVisitorContext): any {
     throw new Error('Abstract emitter cannot visit WrappedNodeExpr.');
   }
