@@ -12,9 +12,9 @@ def define_chromium_repositories():
     platform_http_file(
         name = "org_chromium_chromium_amd64",
         licenses = ["notice"],  # BSD 3-clause (maybe more?)
-        sha256 = "2cfd74ee58c79d8b7aada05c899a930967e2fd8bb0186582cde02c7340863f64",
+        sha256 = "390be82d423fb23830aaf87260cf88afdde975448ca8f587572b052838bc0ba6",
         # 83.0.4103
-        urls = ["https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/756066/chrome-linux.zip"],
+        urls = ["https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/782797/chrome-linux.zip"],
     )
 
     platform_http_file(
@@ -36,9 +36,9 @@ def define_chromium_repositories():
     platform_http_file(
         name = "org_chromium_chromedriver_amd64",
         licenses = ["reciprocal"],  # BSD 3-clause, ICU, MPL 1.1, libpng (BSD/MIT-like), Academic Free License v. 2.0, BSD 2-clause, MIT
-        sha256 = "95dded16000b82e31445361da7d251ed707e027a4b61e9a3ec5fbd1cc2f62bb1",
+        sha256 = "528f4bd8515fff93ad99955a0c4b30133398f4e4fbff54709744bd367ec4f11a",
         # 83.0.4103
-        urls = ["https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/756066/chromedriver_linux64.zip"],
+        urls = ["https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/782797/chromedriver_linux64.zip"],
     )
 
     platform_http_file(
