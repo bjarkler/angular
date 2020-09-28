@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {trustedFunctionForTest} from '@angular/core/testing';
 import {global} from '../../src/util/global';
 
 // Not yet available in TypeScript: https://github.com/Microsoft/TypeScript/pull/29332
@@ -14,7 +15,7 @@ declare var globalThis: any /** TODO #9100 */;
 {
   describe('global', () => {
     it('should be global this value', () => {
-      const _global = new Function('return this')();
+      const _global = trustedFunctionForTest('return this')();
       expect(global).toBe(_global);
     });
 

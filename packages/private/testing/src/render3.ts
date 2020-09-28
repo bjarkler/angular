@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import {ɵresetJitOptions as resetJitOptions} from '@angular/core';
+import {trustedHTMLForTest} from '@angular/core/testing';
 
 /**
  * Wraps a function in a new function which sets up document and HTML for running a test.
@@ -39,7 +40,7 @@ import {ɵresetJitOptions as resetJitOptions} from '@angular/core';
 export function withBody<T extends Function>(html: string, blockFn: T): T {
   return function(done: DoneFn) {
     if (typeof blockFn === 'function') {
-      document.body.innerHTML = html;
+      document.body.innerHTML = trustedHTMLForTest(html) as string;
       const blockReturn = blockFn();
       if (blockReturn instanceof Promise) {
         blockReturn.then(done, done.fail);

@@ -10,6 +10,9 @@ ts_library(
             "src/**/*.ts",
         ],
     ),
+    deps = [
+        "//packages:types",
+    ]
 )
 
 ng_package(

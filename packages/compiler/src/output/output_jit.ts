@@ -11,6 +11,7 @@ import {CompileReflector} from '../compile_reflector';
 
 import {EmitterVisitorContext} from './abstract_emitter';
 import {AbstractJsEmitterVisitor} from './abstract_js_emitter';
+import {trustedFunctionForJit} from './jit_trusted_types';
 import * as o from './output_ast';
 
 /**
@@ -69,11 +70,11 @@ export class JitEvaluator {
       // function anonymous(a,b,c
       // /**/) { ... }```
       // We don't want to hard code this fact, so we auto detect it via an empty function first.
-      const emptyFn = new Function(...fnArgNames.concat('return null;')).toString();
+      const emptyFn = trustedFunctionForJit(...fnArgNames.concat('return null;')).toString();
       const headerLines = emptyFn.slice(0, emptyFn.indexOf('return null;')).split('\n').length - 1;
       fnBody += `\n${ctx.toSourceMapGenerator(sourceUrl, headerLines).toJsComment()}`;
     }
-    const fn = new Function(...fnArgNames.concat(fnBody));
+    const fn = trustedFunctionForJit(...fnArgNames.concat(fnBody));
     return this.executeFunction(fn, fnArgValues);
   }
 

@@ -10,6 +10,7 @@ import {Reflector} from '@angular/core/src/reflection/reflection';
 import {isDelegateCtor, ReflectionCapabilities} from '@angular/core/src/reflection/reflection_capabilities';
 import {makeDecorator, makeParamDecorator, makePropDecorator} from '@angular/core/src/util/decorators';
 import {global} from '@angular/core/src/util/global';
+import {trustedFunctionForTest} from '@angular/core/testing';
 
 interface ClassDecoratorFactory {
   (data: ClassDecorator): any;
@@ -76,7 +77,7 @@ class TestObj {
     let reflector: Reflector;
 
     beforeEach(() => {
-      reflector = new Reflector(new ReflectionCapabilities());
+      reflector = new Reflector(new ReflectionCapabilities(undefined, trustedFunctionForTest));
     });
 
     describe('factory', () => {

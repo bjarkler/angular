@@ -5,6 +5,7 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+import {trustedHTMLForTest, trustedScriptURLForTest} from '@angular/core/testing';
 import {setAngularJSGlobal} from '../../src/angular1';
 
 // Whether the upgrade tests should run against AngularJS minified or not. This can be
@@ -83,7 +84,7 @@ export function createWithEachNg1VersionFn(setNg1: typeof setAngularJSGlobal) {
             document.body.removeChild(script);
             resolve();
           };
-          script.src = `base/npm/node_modules/${scriptUrl}`;
+          script.src = trustedScriptURLForTest(`base/npm/node_modules/${scriptUrl}`) as string;
           document.body.appendChild(script);
         });
       }
@@ -138,7 +139,7 @@ export function html(html: string): Element {
   // Don't return `body` itself, because using it as a `$rootElement` for ng1
   // will attach `$injector` to it and that will affect subsequent tests.
   const body = document.body;
-  body.innerHTML = `<div>${html.trim()}</div>`;
+  body.innerHTML = trustedHTMLForTest(`<div>${html.trim()}</div>`) as string;
   const div = document.body.firstChild as Element;
 
   if (div.childNodes.length === 1 && div.firstChild instanceof HTMLElement) {
@@ -158,7 +159,7 @@ export function multiTrim(text: string|null|undefined, allSpace = false): string
 
 export function nodes(html: string) {
   const div = document.createElement('div');
-  div.innerHTML = html.trim();
+  div.innerHTML = trustedHTMLForTest(html.trim()) as string;
   return Array.prototype.slice.call(div.childNodes);
 }
 
