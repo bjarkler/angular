@@ -2341,21 +2341,21 @@ describe('styling', () => {
   onlyInIvy('only ivy has style/class bindings debugging support')
       .it('should evaluate styling across the template directives when there are multiple elements/sources of styling',
           () => {
-            @Directive({selector: '[one]'})
-            class DirOne {
-              @HostBinding('class') public className = 'dir-one';
+            @Directive({selector: '[first]'})
+            class DirFirst {
+              @HostBinding('class') public className = 'dir-first';
             }
 
-            @Directive({selector: '[two]'})
-            class DirTwo {
-              @HostBinding('class') public className = 'dir-two';
+            @Directive({selector: '[second]'})
+            class DirSecond {
+              @HostBinding('class') public className = 'dir-second';
             }
 
             @Component({
               template: `
-                <div class="a" [style.width.px]="w" one></div>
-                <div class="b" [style.height.px]="h" one two></div>
-                <div class="c" [style.color]="c" two></div>
+                <div class="a" [style.width.px]="w" first></div>
+                <div class="b" [style.height.px]="h" first second></div>
+                <div class="c" [style.color]="c" second></div>
               `
             })
             class Cmp {
@@ -2364,7 +2364,7 @@ describe('styling', () => {
               c = 'red';
             }
 
-            TestBed.configureTestingModule({declarations: [Cmp, DirOne, DirTwo]});
+            TestBed.configureTestingModule({declarations: [Cmp, DirFirst, DirSecond]});
             const fixture = TestBed.createComponent(Cmp);
             fixture.detectChanges();
 
@@ -2434,25 +2434,25 @@ describe('styling', () => {
   onlyInIvy('only ivy has style/class bindings debugging support')
       .it('should flush bindings even if any styling hasn\'t changed in a previous directive',
           () => {
-            @Directive({selector: '[one]'})
-            class DirOne {
+            @Directive({selector: '[first]'})
+            class DirFirst {
               @HostBinding('style.width') w = '100px';
               @HostBinding('style.opacity') o = '0.5';
             }
 
-            @Directive({selector: '[two]'})
-            class DirTwo {
+            @Directive({selector: '[second]'})
+            class DirSecond {
               @HostBinding('style.height') h = '200px';
               @HostBinding('style.color') c = 'red';
             }
 
-            @Component({template: '<div #target one two></div>'})
+            @Component({template: '<div #target first second></div>'})
             class Cmp {
-              @ViewChild('target', {read: DirOne, static: true}) one!: DirOne;
-              @ViewChild('target', {read: DirTwo, static: true}) two!: DirTwo;
+              @ViewChild('target', {read: DirFirst, static: true}) first!: DirFirst;
+              @ViewChild('target', {read: DirSecond, static: true}) second!: DirSecond;
             }
 
-            TestBed.configureTestingModule({declarations: [Cmp, DirOne, DirTwo]});
+            TestBed.configureTestingModule({declarations: [Cmp, DirFirst, DirSecond]});
             const fixture = TestBed.createComponent(Cmp);
             const comp = fixture.componentInstance;
             fixture.detectChanges();
@@ -2463,7 +2463,7 @@ describe('styling', () => {
             expect(div.style.width).toEqual('100px');
             expect(div.style.height).toEqual('200px');
 
-            comp.two.h = '300px';
+            comp.second.h = '300px';
             fixture.detectChanges();
             expect(div.style.opacity).toEqual('0.5');
             expect(div.style.color).toEqual('red');
