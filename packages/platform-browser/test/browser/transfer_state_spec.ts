@@ -7,7 +7,7 @@
  */
 
 import {DOCUMENT} from '@angular/common';
-import {TestBed} from '@angular/core/testing';
+import {TestBed, trustedScriptForTest} from '@angular/core/testing';
 import {BrowserModule, BrowserTransferStateModule, TransferState} from '@angular/platform-browser';
 import {escapeHtml, makeStateKey, StateKey, unescapeHtml} from '@angular/platform-browser/src/browser/transfer_state';
 
@@ -24,7 +24,7 @@ function addScriptTag(doc: Document, appId: string, data: {}) {
   const id = appId + '-state';
   script.id = id;
   script.setAttribute('type', 'application/json');
-  script.textContent = escapeHtml(JSON.stringify(data));
+  script.textContent = trustedScriptForTest(escapeHtml(JSON.stringify(data))) as string;
 
   // Remove any stale script tags.
   removeScriptTag(doc, id);

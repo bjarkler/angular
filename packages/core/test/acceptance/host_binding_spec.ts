@@ -10,7 +10,7 @@ import {state, style, transition, trigger} from '@angular/animations';
 import {CommonModule} from '@angular/common';
 import {AfterContentInit, Component, ComponentFactoryResolver, ComponentRef, ContentChildren, Directive, DoCheck, HostBinding, HostListener, Injectable, Input, NgModule, OnChanges, OnInit, QueryList, ViewChild, ViewChildren, ViewContainerRef} from '@angular/core';
 import {bypassSanitizationTrustHtml, bypassSanitizationTrustStyle, bypassSanitizationTrustUrl} from '@angular/core/src/sanitization/bypass';
-import {TestBed} from '@angular/core/testing';
+import {TestBed, trustedHTMLForTest} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {ivyEnabled, onlyInIvy} from '@angular/private/testing';
@@ -1403,7 +1403,8 @@ describe('host bindings', () => {
           expect(() => fixture.detectChanges()).toThrowError(/Required a safe URL, got a \w+/);
         } else {
           fixture.detectChanges();
-          expect(current()).toEqual(bypassFn == identity ? expectedSanitizedValue : value);
+          expect(current()).toEqual(
+              bypassFn == identity ? expectedSanitizedValue : value.toString());
         }
       });
     }
@@ -1423,7 +1424,7 @@ describe('host bindings', () => {
         'blockquote', 'cite', 'javascript:alert(2.2)', 'unsafe:javascript:alert(2.2)',
         bypassSanitizationTrustHtml, true, true);
     verify(
-        'b', 'innerHTML', '<img src="javascript:alert(3)">',
+        'b', 'innerHTML', trustedHTMLForTest('<img src="javascript:alert(3)">'),
         '<img src="unsafe:javascript:alert(3)">', bypassSanitizationTrustHtml,
         /* isAttribute */ false);
   });

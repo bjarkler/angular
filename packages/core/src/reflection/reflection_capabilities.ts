@@ -74,9 +74,11 @@ export function isDelegateCtor(typeStr: string): boolean {
 
 export class ReflectionCapabilities implements PlatformReflectionCapabilities {
   private _reflect: any;
+  private _trustedFunction?: (...args: string[]) => Function;
 
-  constructor(reflect?: any) {
+  constructor(reflect?: any, trustedFunction?: (...args: string[]) => Function) {
     this._reflect = reflect || global['Reflect'];
+    this._trustedFunction = trustedFunction;
   }
 
   isReflectionEnabled(): boolean {
@@ -279,17 +281,25 @@ export class ReflectionCapabilities implements PlatformReflectionCapabilities {
   }
 
   getter(name: string): GetterFn {
-    return <GetterFn>new Function('o', 'return o.' + name + ';');
+    const functionBody = 'return o.' + name + ';';
+    return <GetterFn>(
+        this._trustedFunction ? this._trustedFunction('o', functionBody) :
+                                new Function('o', functionBody));
   }
 
   setter(name: string): SetterFn {
-    return <SetterFn>new Function('o', 'v', 'return o.' + name + ' = v;');
+    const functionBody = 'return o.' + name + ' = v;';
+    return <SetterFn>(
+        this._trustedFunction ? this._trustedFunction('o', 'v', functionBody) :
+                                new Function('o', 'v', functionBody));
   }
 
   method(name: string): MethodFn {
     const functionBody = `if (!o.${name}) throw new Error('"${name}" is undefined');
         return o.${name}.apply(o, args);`;
-    return <MethodFn>new Function('o', 'args', functionBody);
+    return <MethodFn>(
+        this._trustedFunction ? this._trustedFunction('o', 'args', functionBody) :
+                                new Function('o', 'args', functionBody));
   }
 
   // There is not a concept of import uri in Js, but this is useful in developing Dart applications.

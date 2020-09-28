@@ -6,6 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {trustedHTMLForTest} from '@angular/core/testing';
+
 import {extractProjectableNodes} from '../src/extract-projectable-nodes';
 
 describe('extractProjectableNodes()', () => {
@@ -25,14 +27,15 @@ describe('extractProjectableNodes()', () => {
 
   beforeEach(() => {
     elem = document.createElement('div');
-    elem.innerHTML = '<div class="foo" first="">' +
-        '<span class="bar"></span>' +
-        '</div>' +
-        '<span id="bar"></span>' +
-        '<!-- Comment -->' +
-        'Text' +
-        '<blink class="foo" id="quux"></blink>' +
-        'More text';
+    elem.innerHTML = trustedHTMLForTest(
+                         '<div class="foo" first="">' +
+                         '<span class="bar"></span>' +
+                         '</div>' +
+                         '<span id="bar"></span>' +
+                         '<!-- Comment -->' +
+                         'Text' +
+                         '<blink class="foo" id="quux"></blink>' +
+                         'More text') as string;
     childNodes = Array.prototype.slice.call(elem.childNodes);
   });
 

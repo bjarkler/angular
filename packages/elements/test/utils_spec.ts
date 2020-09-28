@@ -6,6 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import {trustedHTMLForTest} from '@angular/core/testing';
+
 import {camelToDashCase, createCustomEvent, isElement, isFunction, kebabToCamelCase, matchesSelector, scheduler, strictEquals} from '../src/utils';
 
 describe('utils', () => {
@@ -175,14 +177,14 @@ describe('utils', () => {
 
     beforeEach(() => {
       const div = document.createElement('div');
-      div.innerHTML = `
+      div.innerHTML = trustedHTMLForTest(`
         <div class="bar" id="barDiv">
           <span class="baz"></span>
           <ul class="baz" id="bazUl">
             <li class="qux" id="quxLi"></li>
           </ul>
         </div>
-      `;
+      `) as string;
       li = div.querySelector('li')!;
     });
 

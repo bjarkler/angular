@@ -8,7 +8,7 @@
 
 import {DOCUMENT, ɵgetDOM as getDOM} from '@angular/common';
 import {Inject, Injectable} from '@angular/core';
-import {TestComponentRenderer} from '@angular/core/testing';
+import {TestComponentRenderer, trustedHTMLForTest} from '@angular/core/testing';
 
 /**
  * A DOM based implementation of the TestComponentRenderer.
@@ -21,7 +21,7 @@ export class DOMTestComponentRenderer extends TestComponentRenderer {
 
   insertRootElement(rootElId: string) {
     const template = getDOM().getDefaultDocument().createElement('template');
-    template.innerHTML = `<div id="${rootElId}"></div>`;
+    template.innerHTML = trustedHTMLForTest(`<div id="${rootElId}"></div>`) as string;
     const rootEl = <HTMLElement>getContent(template).firstChild;
 
     // TODO(juliemr): can/should this be optional?

@@ -8,6 +8,7 @@
 
 import {ɵgetDOM as getDOM} from '@angular/common';
 import {NgZone, ɵglobal as global} from '@angular/core';
+import {trustedHTMLForTest} from '@angular/core/testing';
 
 export class BrowserDetection {
   private _overrideUa: string|null;
@@ -237,7 +238,7 @@ export function sortedClassList(element: any): any[] {
 
 export function createTemplate(html: any): HTMLElement {
   const t = getDOM().getDefaultDocument().createElement('template');
-  t.innerHTML = html;
+  t.innerHTML = trustedHTMLForTest(html) as string;
   return t;
 }
 
