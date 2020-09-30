@@ -13,8 +13,10 @@
  * Default: DOMParser strategy
  * Fallback: InertDocument strategy
  */
-export function getInertBodyHelper(defaultDoc: Document): InertBodyHelper {
-  return isDOMParserAvailable() ? new DOMParserHelper() : new InertDocumentHelper(defaultDoc);
+export function getInertBodyHelper(
+    defaultDoc: Document, trustedTypePolicy?: TrustedTypePolicy|null): InertBodyHelper {
+  return isDOMParserAvailable() ? new DOMParserHelper(trustedTypePolicy) :
+                                  new InertDocumentHelper(defaultDoc, trustedTypePolicy);
 }
 
 export interface InertBodyHelper {
@@ -29,6 +31,8 @@ export interface InertBodyHelper {
  * This is the default strategy used in browsers that support it.
  */
 class DOMParserHelper implements InertBodyHelper {
+  constructor(private readonly trustedTypePolicy?: TrustedTypePolicy|null) {}
+
   getInertBodyElement(html: string): HTMLElement|null {
     // We add these extra elements to ensure that the rest of the content is parsed as expected
     // e.g. leading whitespace is maintained and tags like `<meta>` do not get hoisted to the
@@ -36,8 +40,11 @@ class DOMParserHelper implements InertBodyHelper {
     // in `html` from consuming the otherwise explicit `</body>` tag.
     html = '<body><remove></remove>' + html;
     try {
-      const body = new (window as any).DOMParser().parseFromString(html, 'text/html').body as
-          HTMLBodyElement;
+      const body =
+          new (window as any)
+              .DOMParser()
+              .parseFromString(this.trustedTypePolicy?.createHTML(html) ?? html, 'text/html')
+              .body as HTMLBodyElement;
       body.removeChild(body.firstChild!);
       return body;
     } catch {
@@ -54,7 +61,8 @@ class DOMParserHelper implements InertBodyHelper {
 class InertDocumentHelper implements InertBodyHelper {
   private inertDocument: Document;
 
-  constructor(private defaultDoc: Document) {
+  constructor(
+      private defaultDoc: Document, private readonly trustedTypePolicy?: TrustedTypePolicy|null) {
     this.inertDocument = this.defaultDoc.implementation.createHTMLDocument('sanitization-inert');
 
     if (this.inertDocument.body == null) {
@@ -71,7 +79,8 @@ class InertDocumentHelper implements InertBodyHelper {
     // Prefer using <template> element if supported.
     const templateEl = this.inertDocument.createElement('template');
     if ('content' in templateEl) {
-      templateEl.innerHTML = html;
+      templateEl.innerHTML =
+          (this.trustedTypePolicy?.createHTML(html) ?? html) as unknown as string;
       return templateEl;
     }
 
@@ -83,7 +92,7 @@ class InertDocumentHelper implements InertBodyHelper {
     // down the line. This has been worked around by creating a new inert `body` and using it as
     // the root node in which we insert the HTML.
     const inertBody = this.inertDocument.createElement('body');
-    inertBody.innerHTML = html;
+    inertBody.innerHTML = (this.trustedTypePolicy?.createHTML(html) ?? html) as unknown as string;
 
     // Support: IE 9-11 only
     // strip custom-namespaced attributes on IE<=11
@@ -129,7 +138,9 @@ class InertDocumentHelper implements InertBodyHelper {
  */
 export function isDOMParserAvailable() {
   try {
-    return !!new (window as any).DOMParser().parseFromString('', 'text/html');
+    return !!new (window as any)
+                 .DOMParser()
+                 .parseFromString(window.trustedTypes?.emptyHTML ?? '', 'text/html');
   } catch {
     return false;
   }

@@ -10,6 +10,7 @@ import '../../util/ng_i18n_closure_mode';
 
 import {getTemplateContent, SRCSET_ATTRS, URI_ATTRS, VALID_ATTRS, VALID_ELEMENTS} from '../../sanitization/html_sanitizer';
 import {getInertBodyHelper} from '../../sanitization/inert_body';
+import {getTrustedTypesPolicy, trustedConstSanitizer} from '../../sanitization/trusted_types';
 import {_sanitizeUrl, sanitizeSrcset} from '../../sanitization/url_sanitizer';
 import {addAllToArray} from '../../util/array_utils';
 import {assertEqual} from '../../util/assert';
@@ -242,7 +243,7 @@ export function i18nAttributesFirstPass(
           // Set attributes for Elements only, for other types (like ElementContainer),
           // only set inputs below
           if (tNode.type === TNodeType.Element) {
-            elementAttributeInternal(tNode, lView, attrName, value, null, null);
+            elementAttributeInternal(tNode, lView, attrName, value, trustedConstSanitizer, null);
           }
           // Check if that attribute is a directive input
           const dataValue = tNode.inputs !== null && tNode.inputs[attrName];
@@ -524,7 +525,7 @@ export function parseICUBlock(pattern: string): IcuExpression {
 function parseIcuCase(
     unsafeHtml: string, parentIndex: number, nestedIcus: IcuExpression[], tIcus: TIcu[],
     expandoStartIndex: number): IcuCase {
-  const inertBodyHelper = getInertBodyHelper(getDocument());
+  const inertBodyHelper = getInertBodyHelper(getDocument(), getTrustedTypesPolicy());
   const inertBodyElement = inertBodyHelper.getInertBodyElement(unsafeHtml);
   if (!inertBodyElement) {
     throw new Error('Unable to generate inert body element');

@@ -166,4 +166,5 @@ export const angularCoreEnv: {[name: string]: Function} =
        'ɵɵsanitizeScript': sanitization.ɵɵsanitizeScript,
        'ɵɵsanitizeUrl': sanitization.ɵɵsanitizeUrl,
        'ɵɵsanitizeUrlOrResourceUrl': sanitization.ɵɵsanitizeUrlOrResourceUrl,
+       'ɵɵtrustHtml': sanitization.ɵɵtrustHtml,
      }))();

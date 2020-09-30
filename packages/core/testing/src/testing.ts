@@ -21,3 +21,4 @@ export * from './before_each';
 export * from './metadata_override';
 export {MetadataOverrider as ɵMetadataOverrider} from './metadata_overrider';
 export * from './private_export_testing';
+export * from './trusted_types';

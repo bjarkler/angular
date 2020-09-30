@@ -8,6 +8,7 @@
  */
 
 import './ng_dev_mode';
+import {trustedFunctionForDev} from './dev_trusted_types';
 
 /**
  * THIS FILE CONTAINS CODE WHICH SHOULD BE TREE SHAKEN AND NEVER CALLED FROM PRODUCTION CODE!!!
@@ -26,10 +27,12 @@ import './ng_dev_mode';
 export function createNamedArrayType(name: string): typeof Array {
   // This should never be called in prod mode, so let's verify that is the case.
   if (ngDevMode) {
+    // const body = trustedScriptForDev(`return class ${name} extends Array{}`);
     try {
       // We need to do it this way so that TypeScript does not down-level the below code.
-      const FunctionConstructor: any = createNamedArrayType.constructor;
-      return (new FunctionConstructor('Array', `return class ${name} extends Array{}`))(Array);
+      // const FunctionConstructor: any = createNamedArrayType.constructor;
+      // return (new FunctionConstructor('Array', body))(Array);
+      return trustedFunctionForDev('Array', `return class ${name} extends Array{}`)(Array);
     } catch (e) {
       // If it does not work just give up and fall back to regular Array.
       return Array;
