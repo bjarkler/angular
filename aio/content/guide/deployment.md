@@ -97,7 +97,7 @@ For the simplest deployment, create a production build and copy the output direc
   </code-example>
 
 
-2. Copy _everything_ within the output folder (`dist/` by default) to a folder on the server.
+2. Copy _everything_ within the output folder (`dist/project-name/` by default) to a folder on the server.
 
 3. Configure the server to redirect requests for missing files to `index.html`.
 Learn more about server-side redirects [below](#fallback).
@@ -180,7 +180,7 @@ The following sections describe configurations for some of the most popular serv
 The list is by no means exhaustive, but should provide you with a good starting point.
 
 * [Apache](https://httpd.apache.org/): add a
-[rewrite rule](http://httpd.apache.org/docs/current/mod/mod_rewrite.html) to the `.htaccess` file as shown
+[rewrite rule](https://httpd.apache.org/docs/current/mod/mod_rewrite.html) to the `.htaccess` file as shown
   (https://ngmilk.rocks/2015/03/09/angularjs-html5-mode-or-pretty-urls-on-apache-using-htaccess/):
 
   <code-example>
@@ -194,7 +194,7 @@ The list is by no means exhaustive, but should provide you with a good starting 
   </code-example>
 
 
-* [Nginx](http://nginx.org/): use `try_files`, as described in
+* [Nginx](https://nginx.org/): use `try_files`, as described in
 [Front Controller Pattern Web Apps](https://www.nginx.com/resources/wiki/start/topics/tutorials/config_pitfalls/#front-controller-pattern-web-apps),
 modified to serve `index.html`:
 
@@ -211,18 +211,18 @@ modified to serve `index.html`:
   # .
   # -- server.rb
   # -- public
-  #    |-- dist
+  #    |-- project-name
   #        |-- index.html
 
   get '/' do
-      folderDir = settings.public_folder + '/dist'  # ng build output folder
+      folderDir = settings.public_folder + '/project-name'  # ng build output folder
       send_file File.join(folderDir, 'index.html')
   end
   ```
 
 
 * [IIS](https://www.iis.net/): add a rewrite rule to `web.config`, similar to the one shown
-[here](http://stackoverflow.com/a/26152011/2116927):
+[here](https://stackoverflow.com/a/26152011):
 
   <code-example format='.' language="xml">
     &lt;system.webServer&gt;
@@ -276,7 +276,7 @@ Browsers forbid such requests unless the server permits them explicitly.
 There isn't anything the client application can do about these errors.
 The server must be configured to accept the application's requests.
 Read about how to enable CORS for specific servers at
-<a href="http://enable-cors.org/server.html" title="Enabling CORS server">enable-cors.org</a>.
+<a href="https://enable-cors.org/server.html" title="Enabling CORS server">enable-cors.org</a>.
 
 <hr>
 
@@ -383,11 +383,11 @@ Build your app for production _including the source maps_
 
 </code-example>
 
-List the generated bundles in the `dist/` folder.
+List the generated bundles in the `dist/project-name/` folder.
 
 <code-example language="none" class="code-shell">
 
-  ls dist/*.bundle.js
+  ls dist/project-name/*.js
 
 </code-example>
 
@@ -396,7 +396,7 @@ The following example displays the graph for the _main_ bundle.
 
 <code-example language="none" class="code-shell">
 
-  node_modules/.bin/source-map-explorer dist/main.*.bundle.js
+  node_modules/.bin/source-map-explorer dist/project-name/main*
 
 </code-example>
 
@@ -530,7 +530,7 @@ last 2 Edge major versions
 last 2 Safari major versions
 last 2 iOS major versions
 Firefox ESR
-not IE 9-11 # For IE 9-11 support, remove 'not'.
+not IE 11 # Angular supports IE 11 only as an opt-in. To opt-in, remove the 'not' prefix on this line.
 </code-example>
 
 <code-example language="json" header="tsconfig.json">

@@ -432,9 +432,6 @@
     "name": "NG_PROV_DEF"
   },
   {
-    "name": "NG_PROV_DEF_FALLBACK"
-  },
-  {
     "name": "NONE"
   },
   {
@@ -576,6 +573,12 @@
     "name": "R3Injector"
   },
   {
+    "name": "R3TemplateRef"
+  },
+  {
+    "name": "R3ViewContainerRef"
+  },
+  {
     "name": "ROUTER_CONFIGURATION"
   },
   {
@@ -673,6 +676,9 @@
   },
   {
     "name": "RoutesRecognized"
+  },
+  {
+    "name": "RuntimeError"
   },
   {
     "name": "SAFE_URL_PATTERN"
@@ -840,6 +846,9 @@
     "name": "VERSION"
   },
   {
+    "name": "VE_ViewContainerRef"
+  },
+  {
     "name": "Version"
   },
   {
@@ -847,6 +856,9 @@
   },
   {
     "name": "ViewEncapsulation"
+  },
+  {
+    "name": "ViewEngineTemplateRef"
   },
   {
     "name": "ViewRef"
@@ -924,12 +936,6 @@
     "name": "addComponentLogic"
   },
   {
-    "name": "addHostBindingsToExpandoInstructions"
-  },
-  {
-    "name": "addRemoveViewFromContainer"
-  },
-  {
     "name": "addToArray"
   },
   {
@@ -940,6 +946,9 @@
   },
   {
     "name": "advanceActivatedRouteNodeAndItsChildren"
+  },
+  {
+    "name": "allocExpando"
   },
   {
     "name": "allocLFrame"
@@ -970,9 +979,6 @@
   },
   {
     "name": "baseElement"
-  },
-  {
-    "name": "baseResolveDirective"
   },
   {
     "name": "bindingUpdated"
@@ -1023,6 +1029,9 @@
     "name": "config"
   },
   {
+    "name": "configureViewWithDirective"
+  },
+  {
     "name": "connectableObservableDescriptor"
   },
   {
@@ -1036,6 +1045,9 @@
   },
   {
     "name": "createContainerRef"
+  },
+  {
+    "name": "createElementNode"
   },
   {
     "name": "createElementRef"
@@ -1062,6 +1074,9 @@
     "name": "createNewSegmentGroup"
   },
   {
+    "name": "createNodeInjector"
+  },
+  {
     "name": "createPlatformFactory"
   },
   {
@@ -1069,9 +1084,6 @@
   },
   {
     "name": "createRouterScroller"
-  },
-  {
-    "name": "createTNode"
   },
   {
     "name": "createTView"
@@ -1147,9 +1159,6 @@
   },
   {
     "name": "domRendererFactory3"
-  },
-  {
-    "name": "elementCreate"
   },
   {
     "name": "empty"
@@ -1251,9 +1260,6 @@
     "name": "fromArray"
   },
   {
-    "name": "generateExpandoInstructionBlock"
-  },
-  {
     "name": "generateInitialInputs"
   },
   {
@@ -1266,13 +1272,7 @@
     "name": "getAppInitializer"
   },
   {
-    "name": "getBeforeNodeForView"
-  },
-  {
     "name": "getBootstrapListener"
-  },
-  {
-    "name": "getCheckNoChangesMode"
   },
   {
     "name": "getClosureSafeProperty"
@@ -1287,10 +1287,13 @@
     "name": "getConstant"
   },
   {
-    "name": "getContainerRenderParent"
+    "name": "getCurrentQueryIndex"
   },
   {
-    "name": "getCurrentQueryIndex"
+    "name": "getCurrentTNode"
+  },
+  {
+    "name": "getCurrentTNodePlaceholderOk"
   },
   {
     "name": "getDOM"
@@ -1300,6 +1303,9 @@
   },
   {
     "name": "getDebugContext"
+  },
+  {
+    "name": "getDeclarationTNode"
   },
   {
     "name": "getFactoryDef"
@@ -1323,13 +1329,7 @@
     "name": "getInjectorIndex"
   },
   {
-    "name": "getIsParent"
-  },
-  {
     "name": "getLCleanup"
-  },
-  {
-    "name": "getLContainer"
   },
   {
     "name": "getLView"
@@ -1371,10 +1371,10 @@
     "name": "getOrCreateTNode"
   },
   {
-    "name": "getOriginalError"
+    "name": "getOrCreateViewRefs"
   },
   {
-    "name": "getOutlet"
+    "name": "getOriginalError"
   },
   {
     "name": "getOutlet"
@@ -1392,15 +1392,6 @@
     "name": "getParentInjectorView"
   },
   {
-    "name": "getParentInjectorViewOffset"
-  },
-  {
-    "name": "getParentState"
-  },
-  {
-    "name": "getPath"
-  },
-  {
     "name": "getPathIndexShift"
   },
   {
@@ -1408,9 +1399,6 @@
   },
   {
     "name": "getPreviousIndex"
-  },
-  {
-    "name": "getPreviousOrParentTNode"
   },
   {
     "name": "getPromiseCtor"
@@ -1452,7 +1440,7 @@
     "name": "getToken"
   },
   {
-    "name": "growHostVarsSpace"
+    "name": "getViewRefs"
   },
   {
     "name": "handleError"
@@ -1465,6 +1453,9 @@
   },
   {
     "name": "hostReportError"
+  },
+  {
+    "name": "icuContainerIterate"
   },
   {
     "name": "identity"
@@ -1515,6 +1506,9 @@
     "name": "isArrayLike"
   },
   {
+    "name": "isCommandWithOutlets"
+  },
+  {
     "name": "isComponentDef"
   },
   {
@@ -1530,6 +1524,9 @@
     "name": "isCssClassMatching"
   },
   {
+    "name": "isCurrentTNodeParent"
+  },
+  {
     "name": "isDirectiveHost"
   },
   {
@@ -1540,6 +1537,9 @@
   },
   {
     "name": "isFunction"
+  },
+  {
+    "name": "isInCheckNoChangesMode"
   },
   {
     "name": "isInlineTemplate"
@@ -1584,9 +1584,6 @@
     "name": "isPromise"
   },
   {
-    "name": "isRootView"
-  },
-  {
     "name": "isScheduler"
   },
   {
@@ -1624,6 +1621,9 @@
   },
   {
     "name": "locateDirectiveOrProvider"
+  },
+  {
+    "name": "lookupTokenUsingModuleInjector"
   },
   {
     "name": "makeParamDecorator"
@@ -1722,6 +1722,9 @@
     "name": "normalizeQueryParams"
   },
   {
+    "name": "notFoundValueOrThrow"
+  },
+  {
     "name": "observable"
   },
   {
@@ -1774,6 +1777,9 @@
   },
   {
     "name": "refreshView"
+  },
+  {
+    "name": "registerHostBindingOpCodes"
   },
   {
     "name": "registerPostOrderHooks"
@@ -1842,9 +1848,6 @@
     "name": "setBindingRootForHostBindings"
   },
   {
-    "name": "setCheckNoChangesMode"
-  },
-  {
     "name": "setCurrentDirectiveIndex"
   },
   {
@@ -1852,6 +1855,9 @@
   },
   {
     "name": "setCurrentQueryIndex"
+  },
+  {
+    "name": "setCurrentTNode"
   },
   {
     "name": "setDirectiveInputsWhichShadowsStyling"
@@ -1869,10 +1875,10 @@
     "name": "setInputsFromAttrs"
   },
   {
-    "name": "setLocaleId"
+    "name": "setIsInCheckNoChangesMode"
   },
   {
-    "name": "setPreviousOrParentTNode"
+    "name": "setLocaleId"
   },
   {
     "name": "setRouterState"
@@ -1948,6 +1954,9 @@
   },
   {
     "name": "throwIfEmpty"
+  },
+  {
+    "name": "throwProviderNotFoundError"
   },
   {
     "name": "toRefArray"

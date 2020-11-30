@@ -17,11 +17,10 @@ export interface AstFactory<TStatement, TExpression> {
   /**
    * Attach the `leadingComments` to the given `statement` node.
    *
-   * @param statement the statement where the comment is to be attached.
+   * @param statement the statement where the comments are to be attached.
    * @param leadingComments the comments to attach.
-   * @returns the node passed in as `statement` with the comments attached.
    */
-  attachComments(statement: TStatement, leadingComments?: LeadingComment[]): TStatement;
+  attachComments(statement: TStatement, leadingComments: LeadingComment[]): void;
 
   /**
    * Create a literal array expresion (e.g. `[expr1, expr2]`).
@@ -97,7 +96,7 @@ export interface AstFactory<TStatement, TExpression> {
    * @param parameters the names of the function's parameters.
    * @param body a statement (or a block of statements) that are the body of the function.
    */
-  createFunctionDeclaration(functionName: string|null, parameters: string[], body: TStatement):
+  createFunctionDeclaration(functionName: string, parameters: string[], body: TStatement):
       TStatement;
 
   /**

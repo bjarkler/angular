@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, AstVisitor, ASTWithSource, Binary, BindingPipe, Chain, Conditional, EmptyExpr, FunctionCall, ImplicitReceiver, Interpolation, KeyedRead, KeyedWrite, LiteralArray, LiteralMap, LiteralPrimitive, MethodCall, NonNullAssert, PrefixNot, PropertyRead, PropertyWrite, Quote, SafeMethodCall, SafePropertyRead, Unary} from '@angular/compiler';
+import {AST, AstVisitor, ASTWithSource, Binary, BindingPipe, Chain, Conditional, EmptyExpr, FunctionCall, ImplicitReceiver, Interpolation, KeyedRead, KeyedWrite, LiteralArray, LiteralMap, LiteralPrimitive, MethodCall, NonNullAssert, PrefixNot, PropertyRead, PropertyWrite, Quote, SafeMethodCall, SafePropertyRead, ThisReceiver, Unary} from '@angular/compiler';
 import * as ts from 'typescript';
 import {TypeCheckingConfig} from '../api';
 
@@ -137,6 +137,10 @@ class AstTranslator implements AstVisitor {
     throw new Error('Method not implemented.');
   }
 
+  visitThisReceiver(ast: ThisReceiver): never {
+    throw new Error('Method not implemented.');
+  }
+
   visitInterpolation(ast: Interpolation): ts.Expression {
     // Build up a chain of binary + operations to simulate the string concatenation of the
     // interpolation's expressions. The chain is started using an actual string literal to ensure
@@ -251,7 +255,14 @@ class AstTranslator implements AstVisitor {
     //     ^     nameSpan
     const leftWithPath = wrapForDiagnostics(left);
     addParseSpanInfo(leftWithPath, ast.sourceSpan);
-    const right = this.translate(ast.value);
+    let right = this.translate(ast.value);
+    // The right needs to be wrapped in parens as well or we cannot accurately match its
+    // span to just the RHS. For example, the span in `e = $event /*0,10*/` is ambiguous.
+    // It could refer to either the whole binary expression or just the RHS.
+    // We should instead generate `e = ($event /*0,10*/)` so we know the span 0,10 matches RHS.
+    if (!ts.isParenthesizedExpression(right)) {
+      right = wrapForTypeChecker(right);
+    }
     const node =
         wrapForDiagnostics(ts.createBinary(leftWithPath, ts.SyntaxKind.EqualsToken, right));
     addParseSpanInfo(node, ast.sourceSpan);
@@ -354,6 +365,9 @@ class VeSafeLhsInferenceBugDetector implements AstVisitor {
     return true;
   }
   visitImplicitReceiver(ast: ImplicitReceiver): boolean {
+    return false;
+  }
+  visitThisReceiver(ast: ThisReceiver): boolean {
     return false;
   }
   visitInterpolation(ast: Interpolation): boolean {

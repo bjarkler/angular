@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {compileDirectiveFromMetadata, ConstantPool, Expression, Identifiers, makeBindingParser, ParsedHostBindings, ParseError, parseHostBindings, R3DependencyMetadata, R3DirectiveMetadata, R3FactoryTarget, R3QueryMetadata, Statement, verifyHostBindings, WrappedNodeExpr} from '@angular/compiler';
+import {compileDeclareDirectiveFromMetadata, compileDirectiveFromMetadata, ConstantPool, Expression, Identifiers, makeBindingParser, ParsedHostBindings, ParseError, parseHostBindings, R3DependencyMetadata, R3DirectiveDef, R3DirectiveMetadata, R3FactoryTarget, R3QueryMetadata, Statement, verifyHostBindings, WrappedNodeExpr} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {ErrorCode, FatalDiagnosticError} from '../../diagnostics';
@@ -151,22 +151,37 @@ export class DirectiveDecoratorHandler implements
     return {diagnostics: diagnostics.length > 0 ? diagnostics : undefined};
   }
 
-  compile(
+  compileFull(
       node: ClassDeclaration, analysis: Readonly<DirectiveHandlerData>,
       resolution: Readonly<unknown>, pool: ConstantPool): CompileResult[] {
-    const meta = analysis.meta;
-    const res = compileDirectiveFromMetadata(meta, pool, makeBindingParser());
-    const factoryRes = compileNgFactoryDefField(
-        {...meta, injectFn: Identifiers.directiveInject, target: R3FactoryTarget.Directive});
+    const def = compileDirectiveFromMetadata(analysis.meta, pool, makeBindingParser());
+    return this.compileDirective(analysis, def);
+  }
+
+  compilePartial(
+      node: ClassDeclaration, analysis: Readonly<DirectiveHandlerData>,
+      resolution: Readonly<unknown>): CompileResult[] {
+    const def = compileDeclareDirectiveFromMetadata(analysis.meta);
+    return this.compileDirective(analysis, def);
+  }
+
+  private compileDirective(
+      analysis: Readonly<DirectiveHandlerData>,
+      {expression: initializer, type}: R3DirectiveDef): CompileResult[] {
+    const factoryRes = compileNgFactoryDefField({
+      ...analysis.meta,
+      injectFn: Identifiers.directiveInject,
+      target: R3FactoryTarget.Directive,
+    });
     if (analysis.metadataStmt !== null) {
       factoryRes.statements.push(analysis.metadataStmt);
     }
     return [
       factoryRes, {
         name: 'ɵdir',
-        initializer: res.expression,
+        initializer,
         statements: [],
-        type: res.type,
+        type,
       }
     ];
   }
@@ -463,12 +478,20 @@ export function extractQueriesFromDecorator(
   }
   reflectObjectLiteral(queryData).forEach((queryExpr, propertyName) => {
     queryExpr = unwrapExpression(queryExpr);
-    if (!ts.isNewExpression(queryExpr) || !ts.isIdentifier(queryExpr.expression)) {
+    if (!ts.isNewExpression(queryExpr)) {
       throw new FatalDiagnosticError(
           ErrorCode.VALUE_HAS_WRONG_TYPE, queryData,
           'Decorator query metadata must be an instance of a query type');
     }
-    const type = reflector.getImportOfIdentifier(queryExpr.expression);
+    const queryType = ts.isPropertyAccessExpression(queryExpr.expression) ?
+        queryExpr.expression.name :
+        queryExpr.expression;
+    if (!ts.isIdentifier(queryType)) {
+      throw new FatalDiagnosticError(
+          ErrorCode.VALUE_HAS_WRONG_TYPE, queryData,
+          'Decorator query metadata must be an instance of a query type');
+    }
+    const type = reflector.getImportOfIdentifier(queryType);
     if (type === null || (!isCore && type.from !== '@angular/core') ||
         !QUERY_TYPES.has(type.name)) {
       throw new FatalDiagnosticError(

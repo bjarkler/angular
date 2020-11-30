@@ -5,10 +5,11 @@
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {absoluteFrom, AbsoluteFsPath, FileSystem, getFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system';
+import {absoluteFrom, AbsoluteFsPath, FileSystem, getFileSystem, setFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system';
+import {InvalidFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/src/invalid_file_system';
 import {runInEachFileSystem} from '@angular/compiler-cli/src/ngtsc/file_system/testing';
 import {MockLogger} from '@angular/compiler-cli/src/ngtsc/logging/testing';
-import {loadTestDirectory} from '@angular/compiler-cli/test/helpers';
+import {loadTestDirectory} from '@angular/compiler-cli/src/ngtsc/testing';
 
 import {extractTranslations} from '../../../src/extract/main';
 import {FormatOptions} from '../../../src/extract/translation_files/format_options';
@@ -34,6 +35,7 @@ runInEachFileSystem(() => {
 
     fs.ensureDir(fs.dirname(sourceFilePath));
     loadTestDirectory(fs, __dirname + '/test_files', absoluteFrom('/project/test_files'));
+    setFileSystem(new InvalidFileSystem());
   });
 
   describe('extractTranslations()', () => {
@@ -48,6 +50,7 @@ runInEachFileSystem(() => {
         useSourceMaps: false,
         useLegacyIds: false,
         duplicateMessageHandling: 'ignore',
+        fileSystem: fs,
       });
       expect(fs.readFile(outputPath)).toEqual([
         `{`,
@@ -59,7 +62,7 @@ runInEachFileSystem(() => {
 
     for (const useLegacyIds of [true, false]) {
       describe(useLegacyIds ? '[using legacy ids]' : '', () => {
-        it('should extract translations from source code, and write as JSON format', () => {
+        it('should extract translations from source code, and write as simple JSON format', () => {
           extractTranslations({
             rootPath,
             sourceLocale: 'en-GB',
@@ -70,6 +73,7 @@ runInEachFileSystem(() => {
             useSourceMaps: false,
             useLegacyIds,
             duplicateMessageHandling: 'ignore',
+            fileSystem: fs,
           });
           expect(fs.readFile(outputPath)).toEqual([
             `{`,
@@ -86,6 +90,86 @@ runInEachFileSystem(() => {
           ].join('\n'));
         });
 
+        it('should extract translations from source code, and write as ARB format', () => {
+          extractTranslations({
+            rootPath,
+            sourceLocale: 'en-GB',
+            sourceFilePaths: [sourceFilePath],
+            format: 'arb',
+            outputPath,
+            logger,
+            useSourceMaps: false,
+            useLegacyIds,
+            duplicateMessageHandling: 'ignore',
+            fileSystem: fs,
+          });
+          expect(fs.readFile(outputPath)).toEqual([
+            '{',
+            '  "@@locale": "en-GB",',
+            '  "3291030485717846467": "Hello, {$PH}!",',
+            '  "@3291030485717846467": {',
+            '    "x-locations": [',
+            '      {',
+            '        "file": "test_files/test.js",',
+            '        "start": { "line": "1", "column": "23" },',
+            '        "end": { "line": "1", "column": "40" }',
+            '      }',
+            '    ]',
+            '  },',
+            '  "8669027859022295761": "try{$PH}me",',
+            '  "@8669027859022295761": {',
+            '    "x-locations": [',
+            '      {',
+            '        "file": "test_files/test.js",',
+            '        "start": { "line": "2", "column": "22" },',
+            '        "end": { "line": "2", "column": "80" }',
+            '      }',
+            '    ]',
+            '  },',
+            '  "custom-id": "Custom id message",',
+            '  "@custom-id": {',
+            '    "x-locations": [',
+            '      {',
+            '        "file": "test_files/test.js",',
+            '        "start": { "line": "3", "column": "29" },',
+            '        "end": { "line": "3", "column": "61" }',
+            '      }',
+            '    ]',
+            '  },',
+            '  "273296103957933077": "Legacy id message",',
+            '  "@273296103957933077": {',
+            '    "x-locations": [',
+            '      {',
+            '        "file": "test_files/test.js",',
+            '        "start": { "line": "5", "column": "13" },',
+            '        "end": { "line": "5", "column": "96" }',
+            '      }',
+            '    ]',
+            '  },',
+            '  "custom-id-2": "Custom and legacy message",',
+            '  "@custom-id-2": {',
+            '    "x-locations": [',
+            '      {',
+            '        "file": "test_files/test.js",',
+            '        "start": { "line": "7", "column": "13" },',
+            '        "end": { "line": "7", "column": "117" }',
+            '      }',
+            '    ]',
+            '  },',
+            '  "2932901491976224757": "pre{$START_TAG_SPAN}inner-pre{$START_BOLD_TEXT}bold{$CLOSE_BOLD_TEXT}inner-post{$CLOSE_TAG_SPAN}post",',
+            '  "@2932901491976224757": {',
+            '    "x-locations": [',
+            '      {',
+            '        "file": "test_files/test.js",',
+            '        "start": { "line": "8", "column": "26" },',
+            '        "end": { "line": "9", "column": "93" }',
+            '      }',
+            '    ]',
+            '  }',
+            '}',
+          ].join('\n'));
+        });
+
         it('should extract translations from source code, and write as xmb format', () => {
           extractTranslations({
             rootPath,
@@ -97,6 +181,7 @@ runInEachFileSystem(() => {
             useSourceMaps: false,
             useLegacyIds,
             duplicateMessageHandling: 'ignore',
+            fileSystem: fs,
           });
           expect(fs.readFile(outputPath)).toEqual([
             `<?xml version="1.0" encoding="UTF-8" ?>`,
@@ -151,6 +236,7 @@ runInEachFileSystem(() => {
                  useLegacyIds,
                  duplicateMessageHandling: 'ignore',
                  formatOptions,
+                 fileSystem: fs,
                });
                expect(fs.readFile(outputPath)).toEqual([
                  `<?xml version="1.0" encoding="UTF-8" ?>`,
@@ -196,9 +282,9 @@ runInEachFileSystem(() => {
                  `        </context-group>`,
                  `      </trans-unit>`,
                  `      <trans-unit id="2932901491976224757" datatype="html">`,
-                 `        <source>pre<x id="START_TAG_SPAN" equiv-text="&apos;&lt;span&gt;&apos;"/>` +
-                     `inner-pre<x id="START_BOLD_TEXT" equiv-text="&apos;&lt;b&gt;&apos;"/>bold<x id="CLOSE_BOLD_TEXT" equiv-text="&apos;&lt;/b&gt;&apos;"/>` +
-                     `inner-post<x id="CLOSE_TAG_SPAN" equiv-text="&apos;&lt;/span&gt;&apos;"/>post</source>`,
+                 `        <source>pre<x id="START_TAG_SPAN" ctype="x-span" equiv-text="&apos;&lt;span&gt;&apos;"/>` +
+                     `inner-pre<x id="START_BOLD_TEXT" ctype="x-b" equiv-text="&apos;&lt;b&gt;&apos;"/>bold<x id="CLOSE_BOLD_TEXT" ctype="x-b" equiv-text="&apos;&lt;/b&gt;&apos;"/>` +
+                     `inner-post<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&apos;&lt;/span&gt;&apos;"/>post</source>`,
                  `        <context-group purpose="location">`,
                  `          <context context-type="sourcefile">test_files/test.js</context>`,
                  `          <context context-type="linenumber">9,10</context>`,
@@ -222,6 +308,7 @@ runInEachFileSystem(() => {
               useLegacyIds,
               duplicateMessageHandling: 'ignore',
               formatOptions,
+              fileSystem: fs,
             });
             expect(fs.readFile(outputPath)).toEqual([
               `<?xml version="1.0" encoding="UTF-8" ?>`,
@@ -272,8 +359,8 @@ runInEachFileSystem(() => {
               `        <note category="location">test_files/test.js:9,10</note>`,
               `      </notes>`,
               `      <segment>`,
-              `        <source>pre<pc id="0" equivStart="START_TAG_SPAN" equivEnd="CLOSE_TAG_SPAN" dispStart="&apos;&lt;span&gt;&apos;" dispEnd="&apos;&lt;/span&gt;&apos;">` +
-                  `inner-pre<pc id="1" equivStart="START_BOLD_TEXT" equivEnd="CLOSE_BOLD_TEXT" dispStart="&apos;&lt;b&gt;&apos;" dispEnd="&apos;&lt;/b&gt;&apos;">bold</pc>` +
+              `        <source>pre<pc id="0" equivStart="START_TAG_SPAN" equivEnd="CLOSE_TAG_SPAN" type="other" dispStart="&apos;&lt;span&gt;&apos;" dispEnd="&apos;&lt;/span&gt;&apos;">` +
+                  `inner-pre<pc id="1" equivStart="START_BOLD_TEXT" equivEnd="CLOSE_BOLD_TEXT" type="fmt" dispStart="&apos;&lt;b&gt;&apos;" dispEnd="&apos;&lt;/b&gt;&apos;">bold</pc>` +
                   `inner-post</pc>post</source>`,
               `      </segment>`,
               `    </unit>`,
@@ -299,6 +386,7 @@ runInEachFileSystem(() => {
              useSourceMaps: true,
              useLegacyIds: false,
              duplicateMessageHandling: 'ignore',
+             fileSystem: fs,
            });
            expect(fs.readFile(outputPath)).toEqual([
              `<?xml version="1.0" encoding="UTF-8" ?>`,
@@ -308,7 +396,8 @@ runInEachFileSystem(() => {
              `      <trans-unit id="157258427077572998" datatype="html">`,
              `        <source>Message in <x id="a-file" equiv-text="file"/>!</source>`,
              `        <context-group purpose="location">`,
-             // These source file paths are due to how Bazel TypeScript compilation source-maps work
+             // These source file paths are due to how Bazel TypeScript compilation source-maps
+             // work
              `          <context context-type="sourcefile">../packages/localize/src/tools/test/extract/integration/test_files/src/a.ts</context>`,
              `          <context context-type="linenumber">3</context>`,
              `        </context-group>`,
@@ -339,6 +428,7 @@ runInEachFileSystem(() => {
                  useSourceMaps: false,
                  useLegacyIds: false,
                  duplicateMessageHandling: 'error',
+                 fileSystem: fs,
                }))
             .toThrowError(
                 `Failed to extract messages\n` +
@@ -360,6 +450,7 @@ runInEachFileSystem(() => {
           useSourceMaps: false,
           useLegacyIds: false,
           duplicateMessageHandling: 'warning',
+          fileSystem: fs,
         });
         expect(logger.logs.warn).toEqual([
           ['Messages extracted with warnings\n' +
@@ -390,6 +481,7 @@ runInEachFileSystem(() => {
           useSourceMaps: false,
           useLegacyIds: false,
           duplicateMessageHandling: 'ignore',
+          fileSystem: fs,
         });
         expect(logger.logs.warn).toEqual([]);
         expect(fs.readFile(outputPath)).toEqual([

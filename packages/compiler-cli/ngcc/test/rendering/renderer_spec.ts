@@ -15,8 +15,8 @@ import {absoluteFrom, getFileSystem} from '../../../src/ngtsc/file_system';
 import {runInEachFileSystem, TestFile} from '../../../src/ngtsc/file_system/testing';
 import {Reexport} from '../../../src/ngtsc/imports';
 import {MockLogger} from '../../../src/ngtsc/logging/testing';
+import {loadTestFiles} from '../../../src/ngtsc/testing';
 import {Import, ImportManager, translateStatement} from '../../../src/ngtsc/translator';
-import {loadTestFiles} from '../../../test/helpers';
 import {DecorationAnalyzer} from '../../src/analysis/decoration_analyzer';
 import {ModuleWithProvidersInfo} from '../../src/analysis/module_with_providers_analyzer';
 import {NgccReferencesRegistry} from '../../src/analysis/ngcc_references_registry';
@@ -66,7 +66,7 @@ class TestRenderingFormatter implements RenderingFormatter {
   printStatement(stmt: Statement, sourceFile: ts.SourceFile, importManager: ImportManager): string {
     const node = translateStatement(
         stmt, importManager,
-        {downlevelLocalizedStrings: this.isEs5, downlevelVariableDeclarations: this.isEs5});
+        {downlevelTaggedTemplates: this.isEs5, downlevelVariableDeclarations: this.isEs5});
     const code = this.printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
 
     return `// TRANSPILED\n${code}`;

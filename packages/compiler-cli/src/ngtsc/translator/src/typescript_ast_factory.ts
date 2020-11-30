@@ -79,13 +79,13 @@ export class TypeScriptAstFactory implements AstFactory<ts.Statement, ts.Express
 
   createExpressionStatement = ts.createExpressionStatement;
 
-  createFunctionDeclaration(functionName: string|null, parameters: string[], body: ts.Statement):
+  createFunctionDeclaration(functionName: string, parameters: string[], body: ts.Statement):
       ts.Statement {
     if (!ts.isBlock(body)) {
       throw new Error(`Invalid syntax, expected a block, but got ${ts.SyntaxKind[body.kind]}.`);
     }
     return ts.createFunctionDeclaration(
-        undefined, undefined, undefined, functionName ?? undefined, undefined,
+        undefined, undefined, undefined, functionName, undefined,
         parameters.map(param => ts.createParameter(undefined, undefined, undefined, param)),
         undefined, body);
   }
@@ -234,12 +234,7 @@ export function createTemplateTail(cooked: string, raw: string): ts.TemplateTail
  * @param statement The statement that will have comments attached.
  * @param leadingComments The comments to attach to the statement.
  */
-export function attachComments<T extends ts.Statement>(
-    statement: T, leadingComments?: LeadingComment[]): T {
-  if (leadingComments === undefined) {
-    return statement;
-  }
-
+export function attachComments(statement: ts.Statement, leadingComments: LeadingComment[]): void {
   for (const comment of leadingComments) {
     const commentKind = comment.multiline ? ts.SyntaxKind.MultiLineCommentTrivia :
                                             ts.SyntaxKind.SingleLineCommentTrivia;
@@ -252,5 +247,4 @@ export function attachComments<T extends ts.Statement>(
       }
     }
   }
-  return statement;
 }

@@ -10,9 +10,8 @@ import * as ts from 'typescript';
 import {absoluteFrom, getFileSystem, getSourceFileOrError} from '../../../src/ngtsc/file_system';
 import {runInEachFileSystem, TestFile} from '../../../src/ngtsc/file_system/testing';
 import {MockLogger} from '../../../src/ngtsc/logging/testing';
-import {ClassMemberKind, ConcreteDeclaration, CtorParameter, DownleveledEnum, InlineDeclaration, isNamedClassDeclaration, isNamedFunctionDeclaration, isNamedVariableDeclaration, KnownDeclaration, TypeScriptReflectionHost, TypeValueReferenceKind} from '../../../src/ngtsc/reflection';
-import {getDeclaration} from '../../../src/ngtsc/testing';
-import {loadFakeCore, loadTestFiles} from '../../../test/helpers';
+import {ClassMemberKind, ConcreteDeclaration, CtorParameter, DeclarationKind, DownleveledEnum, InlineDeclaration, isNamedClassDeclaration, isNamedFunctionDeclaration, isNamedVariableDeclaration, KnownDeclaration, TypeScriptReflectionHost, TypeValueReferenceKind} from '../../../src/ngtsc/reflection';
+import {getDeclaration, loadFakeCore, loadTestFiles} from '../../../src/ngtsc/testing';
 import {CommonJsReflectionHost} from '../../src/host/commonjs_host';
 import {DelegatingReflectionHost} from '../../src/host/delegating_host';
 import {getIifeBody} from '../../src/host/esm2015_host';
@@ -178,7 +177,7 @@ var OuterClass2 = (function() {
 }());
 var SuperClass = (function() { function SuperClass() {} return SuperClass; }());
 var ChildClass = /** @class */ (function (_super) {
-  __extends(ChildClass, _super);
+  __extends(InnerChildClass, _super);
   function InnerChildClass() {}
   return InnerChildClass;
 }(SuperClass);
@@ -208,6 +207,7 @@ foo.decorators = [
   { type: core.Directive, args: [{ selector: '[ignored]' },] }
 ];
 exports.directives = [foo];
+exports.Inline = (function() { function Inline() {} return Inline; })();
 `,
       };
 
@@ -1840,6 +1840,7 @@ exports.MissingClass2 = MissingClass2;
                   const helperDeclaration = host.getDeclarationOfIdentifier(helperIdentifier);
 
                   expect(helperDeclaration).toEqual({
+                    kind: DeclarationKind.Concrete,
                     known: knownAs,
                     node: getHelperDeclaration(helperName),
                     viaModule,
@@ -2163,9 +2164,9 @@ exports.MissingClass2 = MissingClass2;
                 const helperDeclaration = host.getDeclarationOfIdentifier(helperIdentifier);
 
                 expect(helperDeclaration).toEqual({
+                  kind: DeclarationKind.Inline,
                   known: knownAs,
-                  expression: helperIdentifier,
-                  node: null,
+                  node: helperIdentifier,
                   viaModule: null,
                 });
               };
@@ -2197,9 +2198,9 @@ exports.MissingClass2 = MissingClass2;
                 const helperDeclaration = host.getDeclarationOfIdentifier(helperIdentifier);
 
                 expect(helperDeclaration).toEqual({
+                  kind: DeclarationKind.Inline,
                   known: knownAs,
-                  expression: helperIdentifier,
-                  node: null,
+                  node: helperIdentifier,
                   viaModule: null,
                 });
               };
@@ -2421,10 +2422,16 @@ exports.MissingClass2 = MissingClass2;
           const file = getSourceFileOrError(bundle.program, _('/inline_export.js'));
           const exportDeclarations = host.getExportsOfModule(file);
           expect(exportDeclarations).not.toBeNull();
-          const decl = exportDeclarations!.get('directives') as InlineDeclaration;
-          expect(decl).not.toBeUndefined();
-          expect(decl.node).toBeNull();
-          expect(decl.expression).toBeDefined();
+          const entries: [string, InlineDeclaration][] =
+              Array.from(exportDeclarations!.entries()) as any;
+          expect(
+              entries.map(
+                  ([name, decl]) =>
+                      [name, decl.node!.getText(), decl.implementation!.getText(), decl.viaModule]))
+              .toEqual([
+                ['directives', 'exports.directives', '[foo]', null],
+                ['Inline', 'exports.Inline', 'function Inline() {}', null],
+              ]);
         });
 
         it('should recognize declarations of known TypeScript helpers', () => {

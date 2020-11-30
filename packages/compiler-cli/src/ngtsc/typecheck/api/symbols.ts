@@ -10,6 +10,8 @@ import {TmplAstElement, TmplAstReference, TmplAstTemplate, TmplAstVariable} from
 import * as ts from 'typescript';
 
 import {AbsoluteFsPath} from '../../file_system';
+import {ClassDeclaration} from '../../reflection';
+import {DirectiveInScope} from './scope';
 
 export enum SymbolKind {
   Input,
@@ -21,13 +23,14 @@ export enum SymbolKind {
   Element,
   Template,
   Expression,
+  DomBinding,
 }
 
 /**
  * A representation of an entity in the `TemplateAst`.
  */
 export type Symbol = InputBindingSymbol|OutputBindingSymbol|ElementSymbol|ReferenceSymbol|
-    VariableSymbol|ExpressionSymbol|DirectiveSymbol|TemplateSymbol;
+    VariableSymbol|ExpressionSymbol|DirectiveSymbol|TemplateSymbol|DomBindingSymbol;
 
 /** Information about where a `ts.Node` can be found in the type check block shim file. */
 export interface ShimLocation {
@@ -152,8 +155,24 @@ export interface ReferenceSymbol {
    */
   declaration: TmplAstReference;
 
-  /** The location in the shim file of a variable that holds the type of the local ref. */
-  shimLocation: ShimLocation;
+  /**
+   * The location in the shim file of a variable that holds the type of the local ref.
+   * For example, a reference declaration like the following:
+   * ```
+   * var _t1 = document.createElement('div');
+   * var _t2 = _t1; // This is the reference declaration
+   * ```
+   * This `targetLocation` is `[_t1 variable declaration].getStart()`.
+   */
+  targetLocation: ShimLocation;
+
+  /**
+   * The location in the TCB for the identifier node in the reference variable declaration.
+   * For example, given a variable declaration statement for a template reference:
+   * `var _t2 = _t1`, this location is `[_t2 node].getStart()`. This location can
+   * be used to find references to the variable within the template.
+   */
+  referenceVarLocation: ShimLocation;
 }
 
 /**
@@ -182,8 +201,16 @@ export interface VariableSymbol {
    */
   declaration: TmplAstVariable;
 
-  /** The location in the shim file of a variable that holds the type of the template variable. */
-  shimLocation: ShimLocation;
+  /**
+   * The location in the shim file for the identifier that was declared for the template variable.
+   */
+  localVarLocation: ShimLocation;
+
+  /**
+   * The location in the shim file for the initializer node of the variable that represents the
+   * template variable.
+   */
+  initializerLocation: ShimLocation;
 }
 
 /**
@@ -203,6 +230,8 @@ export interface ElementSymbol {
 
   /** The location in the shim file for the variable that holds the type of the element. */
   shimLocation: ShimLocation;
+
+  templateNode: TmplAstElement;
 }
 
 export interface TemplateSymbol {
@@ -210,21 +239,35 @@ export interface TemplateSymbol {
 
   /** A list of directives applied to the element. */
   directives: DirectiveSymbol[];
+
+  templateNode: TmplAstTemplate;
 }
 
 /**
  * A representation of a directive/component whose selector matches a node in a component
  * template.
  */
-export interface DirectiveSymbol {
+export interface DirectiveSymbol extends DirectiveInScope {
   kind: SymbolKind.Directive;
 
   /** The `ts.Type` for the class declaration. */
   tsType: ts.Type;
 
-  /** The `ts.Symbol` for the class declaration. */
-  tsSymbol: ts.Symbol;
-
   /** The location in the shim file for the variable that holds the type of the directive. */
   shimLocation: ShimLocation;
+
+  /** The `NgModule` that this directive is declared in or `null` if it could not be determined. */
+  ngModule: ClassDeclaration|null;
+}
+
+/**
+ * A representation of an attribute on an element or template. These bindings aren't currently
+ * type-checked (see `checkTypeOfDomBindings`) so they won't have a `ts.Type`, `ts.Symbol`, or shim
+ * location.
+ */
+export interface DomBindingSymbol {
+  kind: SymbolKind.DomBinding;
+
+  /** The symbol for the element or template of the text attribute. */
+  host: ElementSymbol|TemplateSymbol;
 }

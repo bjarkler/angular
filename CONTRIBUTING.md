@@ -32,7 +32,7 @@ Stack Overflow is a much better place to ask questions since:
 
 To save your and our time, we will systematically close all issues that are requests for general support and redirect people to Stack Overflow.
 
-If you would like to chat about the question in real-time, you can reach out via [our gitter channel][gitter].
+If you would like to chat about the question in real-time, you can reach out via [our Discord server][discord].
 
 
 ## <a name="issue"></a> Found a Bug?
@@ -107,7 +107,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
    Adherence to these conventions is necessary because release notes are automatically generated from these messages.
 
      ```shell
-     git commit -a
+     git commit --all
      ```
     Note: the optional commit `-a` command line option will automatically "add" and "rm" edited files.
 
@@ -119,18 +119,56 @@ Before you submit your Pull Request (PR) consider the following guidelines:
 
 11. In GitHub, send a pull request to `angular:master`.
 
-   If we ask for changes via code reviews then:
+### Reviewing a Pull Request
 
-   * Make the required updates.
-   * Re-run the Angular test suites to ensure tests are still passing.
-   * Rebase your branch and force push to your GitHub repository (this will update your Pull Request):
+The Angular team reserves the right not to accept pull requests from community members who haven't been good citizens of the community. Such behavior includes not following the [Angular code of conduct](https://github.com/angular/code-of-conduct) and applies within or outside of Angular managed channels.
 
-      ```shell
-      git rebase master -i
-      git push -f
-      ```
+#### Addressing review feedback
+
+If we ask for changes via code reviews then:
+
+1. Make the required updates to the code.
+
+2. Re-run the Angular test suites to ensure tests are still passing.
+
+3. Create a fixup commit and push to your GitHub repository (this will update your Pull Request):
+
+    ```shell
+    git commit --all --fixup HEAD
+    git push
+    ```
+
+    For more info on working with fixup commits see [here](docs/FIXUP_COMMITS.md).
 
 That's it! Thank you for your contribution!
+
+
+##### Updating the commit message
+
+A reviewer might often suggest changes to a commit message (for example, to add more context for a change or adhere to our [commit message guidelines](#commit)).
+In order to update the commit message of the last commit on your branch:
+
+1. Check out your branch:
+
+    ```shell
+    git checkout my-fix-branch
+    ```
+
+2. Amend the last commit and modify the commit message:
+
+    ```shell
+    git commit --amend
+    ```
+
+3. Push to your GitHub repository:
+
+    ```shell
+    git push --force-with-lease
+    ```
+
+> NOTE:<br />
+> If you need to update the commit message of an earlier commit, you can use `git rebase` in interactive mode.
+> See the [git docs](https://git-scm.com/docs/git-rebase#_interactive_mode) for more details.
 
 
 #### After your pull request is merged
@@ -174,7 +212,7 @@ To ensure consistency throughout the source code, keep these rules in mind as yo
 
 ## <a name="commit"></a> Commit Message Format
 
-*This specification is inspired and supersedes the [AngularJS commit message format][commit-message-format].*
+*This specification is inspired by and supersedes the [AngularJS commit message format][commit-message-format].*
 
 We have very precise rules over how our Git commit messages must be formatted.
 This format leads to **easier to read commit history**.
@@ -192,15 +230,15 @@ Each commit message consists of a **header**, a **body**, and a **footer**.
 
 The `header` is mandatory and must conform to the [Commit Message Header](#commit-header) format.
 
-The `body` is mandatory for all commits except for those of scope "docs".
-When the body is required it must be at least 20 characters long.
+The `body` is mandatory for all commits except for those of type "docs".
+When the body is present it must be at least 20 characters long and must conform to the [Commit Message Body](#commit-body) format.
 
-The `footer` is optional.
+The `footer` is optional. The [Commit Message Footer](#commit-footer) format describes what the footer is used for and the structure it must have.
 
 Any line of the commit message cannot be longer than 100 characters.
 
 
-#### <a href="commit-header"></a>Commit Message Header
+#### <a name="commit-header"></a>Commit Message Header
 
 ```
 <type>(<scope>): <short summary>
@@ -209,11 +247,11 @@ Any line of the commit message cannot be longer than 100 characters.
   │       │
   │       └─⫸ Commit Scope: animations|bazel|benchpress|common|compiler|compiler-cli|core|
   │                          elements|forms|http|language-service|localize|platform-browser|
-  │                          platform-browser-dynamic|platform-server|platform-webworker|
-  │                          platform-webworker-dynamic|router|service-worker|upgrade|zone.js|
-  │                          packaging|changelog|dev-infra|docs-infra|migrations|ngcc|ve
+  │                          platform-browser-dynamic|platform-server|router|service-worker|
+  │                          upgrade|zone.js|packaging|changelog|dev-infra|docs-infra|migrations|
+  │                          ngcc|ve
   │
-  └─⫸ Commit Type: build|ci|docs|feat|fix|perf|refactor|style|test
+  └─⫸ Commit Type: build|ci|docs|feat|fix|perf|refactor|test
 ```
 
 The `<type>` and `<summary>` fields are mandatory, the `(<scope>)` field is optional.
@@ -253,8 +291,6 @@ The following is the list of supported scopes:
 * `platform-browser`
 * `platform-browser-dynamic`
 * `platform-server`
-* `platform-webworker`
-* `platform-webworker-dynamic`
 * `router`
 * `service-worker`
 * `upgrade`
@@ -276,7 +312,7 @@ There are currently a few exceptions to the "use package name" rule:
 
 * `ve`: used for changes specific to ViewEngine (legacy compiler/renderer).
 
-* none/empty string: useful for `style`, `test` and `refactor` changes that are done across all packages (e.g. `style: add missing semicolons`) and for docs changes that are not related to a specific package (e.g. `docs: fix typo in tutorial`).
+* none/empty string: useful for `test` and `refactor` changes that are done across all packages (e.g. `test: add missing unit tests`) and for docs changes that are not related to a specific package (e.g. `docs: fix typo in tutorial`).
 
 
 ##### Summary
@@ -288,7 +324,7 @@ Use the summary field to provide a succinct description of the change:
 * no dot (.) at the end
 
 
-#### Commit Message Body
+#### <a name="commit-body"></a>Commit Message Body
 
 Just as in the summary, use the imperative, present tense: "fix" not "fixed" nor "fixes".
 
@@ -296,7 +332,7 @@ Explain the motivation for the change in the commit message body. This commit me
 You can include a comparison of the previous behavior with the new behavior in order to illustrate the impact of the change.
 
 
-#### Commit Message Footer
+#### <a name="commit-footer"></a>Commit Message Footer
 
 The footer can contain information about breaking changes and is also the place to reference GitHub issues, Jira tickets, and other PRs that this commit closes or is related to.
 
@@ -346,13 +382,13 @@ The following documents can help you sort out issues with GitHub accounts and mu
 [angular-group]: https://groups.google.com/forum/#!forum/angular
 [coc]: https://github.com/angular/code-of-conduct/blob/master/CODE_OF_CONDUCT.md
 [commit-message-format]: https://docs.google.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit#
-[corporate-cla]: http://code.google.com/legal/corporate-cla-v1.0.html
+[corporate-cla]: https://cla.developers.google.com/about/google-corporate
 [dev-doc]: https://github.com/angular/angular/blob/master/docs/DEVELOPER.md
 [github]: https://github.com/angular/angular
-[gitter]: https://gitter.im/angular/angular
-[individual-cla]: http://code.google.com/legal/individual-cla-v1.0.html
+[discord]: https://discord.gg/angular
+[individual-cla]: https://cla.developers.google.com/about/google-individual
 [js-style-guide]: https://google.github.io/styleguide/jsguide.html
-[jsfiddle]: http://jsfiddle.net
-[plunker]: http://plnkr.co/edit
-[runnable]: http://runnable.com
-[stackoverflow]: http://stackoverflow.com/questions/tagged/angular
+[jsfiddle]: https://jsfiddle.net/
+[plunker]: https://plnkr.co/edit
+[runnable]: https://runnable.com/
+[stackoverflow]: https://stackoverflow.com/questions/tagged/angular

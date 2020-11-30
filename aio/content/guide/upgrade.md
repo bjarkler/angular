@@ -80,7 +80,7 @@ doesn't work that well if you have to load all those files to the HTML page with
 order. That's why it's a good idea to start using a *module loader*.
 
 Using a module loader such as [SystemJS](https://github.com/systemjs/systemjs),
-[Webpack](http://webpack.github.io/), or [Browserify](http://browserify.org/)
+[Webpack](https://webpack.github.io/), or [Browserify](http://browserify.org/)
 allows us to use the built-in module systems of TypeScript or ES2015.
 You can use the `import` and `export` features that explicitly specify what code can
 and will be shared between different parts of the application. For ES5 applications
@@ -478,6 +478,15 @@ using the `downgradeComponent()` method. The result is an AngularJS
 
 <code-example path="upgrade-module/src/app/downgrade-static/app.module.ts" region="downgradecomponent" header="app.module.ts">
 </code-example>
+
+<div class="alert is-helpful">
+
+By default, Angular change detection will also run on the component for every
+AngularJS `$digest` cycle. If you wish to only have change detection run when
+the inputs change, you can set `propagateDigest` to `false` when calling
+`downgradeComponent()`.
+
+</div>
 
 Because `HeroDetailComponent` is an Angular component, you must also add it to the
 `declarations` in the `AppModule`.

@@ -6,6 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 import * as o from '@angular/compiler';
+import {createTaggedTemplate} from 'typescript';
 
 import {AstFactory, BinaryOperator, ObjectLiteralProperty, SourceMapRange, TemplateElement, TemplateLiteral, UnaryOperator} from './api/ast_factory';
 import {ImportGenerator} from './api/import_generator';
@@ -38,21 +39,21 @@ const BINARY_OPERATORS = new Map<o.BinaryOperator, BinaryOperator>([
 export type RecordWrappedNodeExprFn<TExpression> = (expr: TExpression) => void;
 
 export interface TranslatorOptions<TExpression> {
-  downlevelLocalizedStrings?: boolean;
+  downlevelTaggedTemplates?: boolean;
   downlevelVariableDeclarations?: boolean;
   recordWrappedNodeExpr?: RecordWrappedNodeExprFn<TExpression>;
 }
 
 export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.ExpressionVisitor,
                                                                              o.StatementVisitor {
-  private downlevelLocalizedStrings: boolean;
+  private downlevelTaggedTemplates: boolean;
   private downlevelVariableDeclarations: boolean;
   private recordWrappedNodeExpr: RecordWrappedNodeExprFn<TExpression>;
 
   constructor(
       private factory: AstFactory<TStatement, TExpression>,
       private imports: ImportGenerator<TExpression>, options: TranslatorOptions<TExpression>) {
-    this.downlevelLocalizedStrings = options.downlevelLocalizedStrings === true;
+    this.downlevelTaggedTemplates = options.downlevelTaggedTemplates === true;
     this.downlevelVariableDeclarations = options.downlevelVariableDeclarations === true;
     this.recordWrappedNodeExpr = options.recordWrappedNodeExpr || (() => {});
   }
@@ -61,14 +62,14 @@ export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.E
     const varType = this.downlevelVariableDeclarations ?
         'var' :
         stmt.hasModifier(o.StmtModifier.Final) ? 'const' : 'let';
-    return this.factory.attachComments(
+    return this.attachComments(
         this.factory.createVariableDeclaration(
             stmt.name, stmt.value?.visitExpression(this, context.withExpressionMode), varType),
         stmt.leadingComments);
   }
 
   visitDeclareFunctionStmt(stmt: o.DeclareFunctionStmt, context: Context): TStatement {
-    return this.factory.attachComments(
+    return this.attachComments(
         this.factory.createFunctionDeclaration(
             stmt.name, stmt.params.map(param => param.name),
             this.factory.createBlock(
@@ -77,14 +78,14 @@ export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.E
   }
 
   visitExpressionStmt(stmt: o.ExpressionStatement, context: Context): TStatement {
-    return this.factory.attachComments(
+    return this.attachComments(
         this.factory.createExpressionStatement(
             stmt.expr.visitExpression(this, context.withStatementMode)),
         stmt.leadingComments);
   }
 
   visitReturnStmt(stmt: o.ReturnStatement, context: Context): TStatement {
-    return this.factory.attachComments(
+    return this.attachComments(
         this.factory.createReturnStatement(
             stmt.value.visitExpression(this, context.withExpressionMode)),
         stmt.leadingComments);
@@ -95,7 +96,7 @@ export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.E
   }
 
   visitIfStmt(stmt: o.IfStmt, context: Context): TStatement {
-    return this.factory.attachComments(
+    return this.attachComments(
         this.factory.createIfStatement(
             stmt.condition.visitExpression(this, context),
             this.factory.createBlock(
@@ -111,7 +112,7 @@ export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.E
   }
 
   visitThrowStmt(stmt: o.ThrowStmt, context: Context): TStatement {
-    return this.factory.attachComments(
+    return this.attachComments(
         this.factory.createThrowStatement(
             stmt.error.visitExpression(this, context.withExpressionMode)),
         stmt.leadingComments);
@@ -168,6 +169,19 @@ export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.E
         ast.sourceSpan);
   }
 
+  visitTaggedTemplateExpr(ast: o.TaggedTemplateExpr, context: Context): TExpression {
+    return this.setSourceMapRange(
+        this.createTaggedTemplateExpression(ast.tag.visitExpression(this, context), {
+          elements: ast.template.elements.map(e => createTemplateElement({
+                                                cooked: e.text,
+                                                raw: e.rawText,
+                                                range: e.sourceSpan ?? ast.sourceSpan,
+                                              })),
+          expressions: ast.template.expressions.map(e => e.visitExpression(this, context))
+        }),
+        ast.sourceSpan);
+  }
+
   visitInstantiateExpr(ast: o.InstantiateExpr, context: Context): TExpression {
     return this.factory.createNewExpression(
         ast.classExpr.visitExpression(this, context),
@@ -202,13 +216,14 @@ export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.E
     }
 
     const localizeTag = this.factory.createIdentifier('$localize');
+    return this.setSourceMapRange(
+        this.createTaggedTemplateExpression(localizeTag, {elements, expressions}), ast.sourceSpan);
+  }
 
-    // Now choose which implementation to use to actually create the necessary AST nodes.
-    const localizeCall = this.downlevelLocalizedStrings ?
-        this.createES5TaggedTemplateFunctionCall(localizeTag, {elements, expressions}) :
-        this.factory.createTaggedTemplate(localizeTag, {elements, expressions});
-
-    return this.setSourceMapRange(localizeCall, ast.sourceSpan);
+  private createTaggedTemplateExpression(tag: TExpression, template: TemplateLiteral<TExpression>):
+      TExpression {
+    return this.downlevelTaggedTemplates ? this.createES5TaggedTemplateFunctionCall(tag, template) :
+                                           this.factory.createTaggedTemplate(tag, template);
   }
 
   /**
@@ -249,7 +264,10 @@ export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.E
 
   visitExternalExpr(ast: o.ExternalExpr, _context: Context): TExpression {
     if (ast.value.name === null) {
-      throw new Error(`Import unknown module or symbol ${ast.value}`);
+      if (ast.value.moduleName === null) {
+        throw new Error('Invalid import without name nor moduleName');
+      }
+      return this.imports.generateNamespaceImport(ast.value.moduleName);
     }
     // If a moduleName is specified, this is a normal import. If there's no module name, it's a
     // reference to a global/ambient symbol.
@@ -386,6 +404,14 @@ export class ExpressionTranslatorVisitor<TStatement, TExpression> implements o.E
   private setSourceMapRange<T extends TExpression|TStatement>(ast: T, span: o.ParseSourceSpan|null):
       T {
     return this.factory.setSourceMapRange(ast, createRange(span));
+  }
+
+  private attachComments(statement: TStatement, leadingComments: o.LeadingComment[]|undefined):
+      TStatement {
+    if (leadingComments !== undefined) {
+      this.factory.attachComments(statement, leadingComments);
+    }
+    return statement;
   }
 }
 

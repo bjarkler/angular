@@ -2137,7 +2137,7 @@ describe('Integration', () => {
          @Component({
            selector: 'someRoot',
            template:
-               `<router-outlet></router-outlet><a routerLink="/home" preserveQueryParams preserveFragment>Link</a>`
+               `<router-outlet></router-outlet><a routerLink="/home" queryParamsHandling="preserve" preserveFragment>Link</a>`
          })
          class RootCmpWithLink {
          }
@@ -3027,6 +3027,13 @@ describe('Integration', () => {
                   resolve: {data: 'resolver'},
                 },
               ]
+            },
+            {
+              path: 'throwing',
+              runGuardsAndResolvers,
+              component: ThrowingCmp,
+              canActivate: ['guard'],
+              resolve: {data: 'resolver'}
             }
           ]);
 
@@ -3125,6 +3132,15 @@ describe('Integration', () => {
              advance(fixture);
              expect(guardRunCount).toEqual(5);
              expect(recordedData).toEqual([{data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4}]);
+
+             // Issue #39030, always running guards and resolvers should not throw
+             // when navigating away from a component with a throwing constructor.
+             expect(() => {
+               router.navigateByUrl('/throwing').catch(() => {});
+               advance(fixture);
+               router.navigateByUrl('/a;p=1');
+               advance(fixture);
+             }).not.toThrow();
            })));
 
         it('should rerun rerun guards and resolvers when path params change',
@@ -5609,30 +5625,54 @@ describe('Integration', () => {
 });
 
 describe('Testing router options', () => {
-  describe('paramsInheritanceStrategy', () => {
-    beforeEach(() => {
+  describe('should configure the router', () => {
+    it('assigns errorHandler', () => {
+      function errorHandler(error: any) {
+        throw error;
+      }
       TestBed.configureTestingModule(
-          {imports: [RouterTestingModule.withRoutes([], {paramsInheritanceStrategy: 'always'})]});
+          {imports: [RouterTestingModule.withRoutes([], {errorHandler})]});
+      const router: Router = TestBed.inject(Router);
+      expect(router.errorHandler).toBe(errorHandler);
     });
 
-    it('should configure the router', fakeAsync(inject([Router], (router: Router) => {
-         expect(router.paramsInheritanceStrategy).toEqual('always');
-       })));
-  });
-
-  describe('malformedUriErrorHandler', () => {
-    function malformedUriErrorHandler(e: URIError, urlSerializer: UrlSerializer, url: string) {
-      return urlSerializer.parse('/error');
-    }
-
-    beforeEach(() => {
+    it('assigns malformedUriErrorHandler', () => {
+      function malformedUriErrorHandler(e: URIError, urlSerializer: UrlSerializer, url: string) {
+        return urlSerializer.parse('/error');
+      }
       TestBed.configureTestingModule(
           {imports: [RouterTestingModule.withRoutes([], {malformedUriErrorHandler})]});
+      const router: Router = TestBed.inject(Router);
+      expect(router.malformedUriErrorHandler).toBe(malformedUriErrorHandler);
     });
 
-    it('should configure the router', fakeAsync(inject([Router], (router: Router) => {
-         expect(router.malformedUriErrorHandler).toBe(malformedUriErrorHandler);
-       })));
+    it('assigns onSameUrlNavigation', () => {
+      TestBed.configureTestingModule(
+          {imports: [RouterTestingModule.withRoutes([], {onSameUrlNavigation: 'reload'})]});
+      const router: Router = TestBed.inject(Router);
+      expect(router.onSameUrlNavigation).toBe('reload');
+    });
+
+    it('assigns paramsInheritanceStrategy', () => {
+      TestBed.configureTestingModule(
+          {imports: [RouterTestingModule.withRoutes([], {paramsInheritanceStrategy: 'always'})]});
+      const router: Router = TestBed.inject(Router);
+      expect(router.paramsInheritanceStrategy).toBe('always');
+    });
+
+    it('assigns relativeLinkResolution', () => {
+      TestBed.configureTestingModule(
+          {imports: [RouterTestingModule.withRoutes([], {relativeLinkResolution: 'corrected'})]});
+      const router: Router = TestBed.inject(Router);
+      expect(router.relativeLinkResolution).toBe('corrected');
+    });
+
+    it('assigns urlUpdateStrategy', () => {
+      TestBed.configureTestingModule(
+          {imports: [RouterTestingModule.withRoutes([], {urlUpdateStrategy: 'eager'})]});
+      const router: Router = TestBed.inject(Router);
+      expect(router.urlUpdateStrategy).toBe('eager');
+    });
   });
 });
 

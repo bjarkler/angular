@@ -106,12 +106,18 @@ describe('type check blocks', () => {
   it('should handle method calls of template variables', () => {
     const TEMPLATE = `<ng-template let-a>{{a(1)}}</ng-template>`;
     expect(tcb(TEMPLATE)).toContain('var _t2 = _t1.$implicit;');
-    expect(tcb(TEMPLATE)).toContain('(_t2).a(1)');
+    expect(tcb(TEMPLATE)).toContain('(_t2)(1)');
   });
 
   it('should handle implicit vars when using microsyntax', () => {
     const TEMPLATE = `<div *ngFor="let user of users"></div>`;
     expect(tcb(TEMPLATE)).toContain('var _t2 = _t1.$implicit;');
+  });
+
+  it('should handle direct calls of an implicit template variable', () => {
+    const TEMPLATE = `<div *ngFor="let a of letters">{{a(1)}}</div>`;
+    expect(tcb(TEMPLATE)).toContain('var _t2 = _t1.$implicit;');
+    expect(tcb(TEMPLATE)).toContain('(_t2)(1)');
   });
 
   describe('type constructors', () => {
@@ -584,6 +590,12 @@ describe('type check blocks', () => {
     expect(block).toContain('(((ctx).a) as any)');
   });
 
+  it('should handle $any accessed through `this`', () => {
+    const TEMPLATE = `{{this.$any(a)}}`;
+    const block = tcb(TEMPLATE);
+    expect(block).toContain('((ctx).$any(((ctx).a)))');
+  });
+
   describe('experimental DOM checking via lib.dom.d.ts', () => {
     it('should translate unclaimed bindings to their property equivalent', () => {
       const TEMPLATE = `<label [for]="'test'"></label>`;
@@ -684,6 +696,14 @@ describe('type check blocks', () => {
       expect(block).toContain(
           '_t3.addEventListener("event", function ($event): any { (_t2 = 3); });');
     });
+
+    it('should ignore accesses to $event through `this`', () => {
+      const TEMPLATE = `<div (event)="foo(this.$event)"></div>`;
+      const block = tcb(TEMPLATE);
+
+      expect(block).toContain(
+          '_t1.addEventListener("event", function ($event): any { (ctx).foo(((ctx).$event)); });');
+    });
   });
 
   describe('config', () => {
@@ -749,13 +769,13 @@ describe('type check blocks', () => {
 
       it('generates a references var when enabled', () => {
         const block = tcb(TEMPLATE, DIRECTIVES);
-        expect(block).toContain('var _t2 = (_t1 as any as core.TemplateRef<any>);');
+        expect(block).toContain('var _t1 = (_t2 as any as core.TemplateRef<any>);');
       });
 
       it('generates a reference var when disabled', () => {
         const DISABLED_CONFIG: TypeCheckingConfig = {...BASE_CONFIG, checkTemplateBodies: false};
         const block = tcb(TEMPLATE, DIRECTIVES, DISABLED_CONFIG);
-        expect(block).toContain('var _t2 = (_t1 as any as core.TemplateRef<any>);');
+        expect(block).toContain('var _t1 = (_t2 as any as core.TemplateRef<any>);');
       });
     });
 
@@ -899,8 +919,8 @@ describe('type check blocks', () => {
       it('should trace references to an <ng-template> when enabled', () => {
         const block = tcb(TEMPLATE, DIRECTIVES);
         expect(block).toContain(
-            'var _t4 = (_t3 as any as core.TemplateRef<any>); ' +
-            '"" + (((_t4).value2));');
+            'var _t3 = (_t4 as any as core.TemplateRef<any>); ' +
+            '"" + (((_t3).value2));');
       });
 
       it('should use any for reference types when disabled', () => {

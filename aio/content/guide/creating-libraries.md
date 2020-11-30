@@ -79,7 +79,7 @@ Here are some things to consider in migrating application functionality to a lib
 
 * Consider how you provide services to client applications.
 
-   * Services should declare their own providers (rather than declaring providers in the NgModule or a component), so that they are *tree-shakable*. This allows the compiler to leave the service out of the bundle if it never gets injected into the application that imports the library. For more about this, see [Tree-shakable providers](guide/dependency-injection-providers#tree-shakable-providers).
+   * Services should declare their own providers, rather than declaring providers in the NgModule or a component. Declaring a provider makes that service *tree-shakable*. This practice allows the compiler to leave the service out of the bundle if it never gets injected into the application that imports the library. For more about this, see [Tree-shakable providers](guide/architecture-services#providing-services).
 
    * If you register global service providers or share providers across multiple NgModules, use the [`forRoot()` and `forChild()` design patterns](guide/singleton-services) provided by the [RouterModule](api/router/RouterModule).
 
@@ -156,7 +156,7 @@ The library must be rebuilt on every change.
 When linking a library, make sure that the build step runs in watch mode, and that the library's `package.json` configuration points at the correct entry points.
 For example, `main` should point at a JavaScript file, not a TypeScript file.
 
-## Use TypeScript path mapping for peer dependencies
+### Use TypeScript path mapping for peer dependencies
 
 Angular libraries should list all `@angular/*` dependencies as peer dependencies.
 This ensures that when modules ask for Angular, they all get the exact same module.

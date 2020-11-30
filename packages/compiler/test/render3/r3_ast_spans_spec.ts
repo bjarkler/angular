@@ -59,13 +59,17 @@ class R3AstSourceSpans implements t.Visitor<void> {
   }
 
   visitReference(reference: t.Reference) {
-    this.result.push(
-        ['Reference', humanizeSpan(reference.sourceSpan), humanizeSpan(reference.valueSpan)]);
+    this.result.push([
+      'Reference', humanizeSpan(reference.sourceSpan), humanizeSpan(reference.keySpan),
+      humanizeSpan(reference.valueSpan)
+    ]);
   }
 
   visitTextAttribute(attribute: t.TextAttribute) {
-    this.result.push(
-        ['TextAttribute', humanizeSpan(attribute.sourceSpan), humanizeSpan(attribute.valueSpan)]);
+    this.result.push([
+      'TextAttribute', humanizeSpan(attribute.sourceSpan), humanizeSpan(attribute.keySpan),
+      humanizeSpan(attribute.valueSpan)
+    ]);
   }
 
   visitBoundAttribute(attribute: t.BoundAttribute) {
@@ -76,8 +80,10 @@ class R3AstSourceSpans implements t.Visitor<void> {
   }
 
   visitBoundEvent(event: t.BoundEvent) {
-    this.result.push(
-        ['BoundEvent', humanizeSpan(event.sourceSpan), humanizeSpan(event.handlerSpan)]);
+    this.result.push([
+      'BoundEvent', humanizeSpan(event.sourceSpan), humanizeSpan(event.keySpan),
+      humanizeSpan(event.handlerSpan)
+    ]);
   }
 
   visitText(text: t.Text) {
@@ -89,7 +95,13 @@ class R3AstSourceSpans implements t.Visitor<void> {
   }
 
   visitIcu(icu: t.Icu) {
-    return null;
+    this.result.push(['Icu', humanizeSpan(icu.sourceSpan)]);
+    for (const key of Object.keys(icu.vars)) {
+      this.result.push(['Icu:Var', humanizeSpan(icu.vars[key].sourceSpan)]);
+    }
+    for (const key of Object.keys(icu.placeholders)) {
+      this.result.push(['Icu:Placeholder', humanizeSpan(icu.placeholders[key].sourceSpan)]);
+    }
   }
 
   private visitAll(nodes: t.Node[][]) {
@@ -126,14 +138,14 @@ describe('R3 AST source spans', () => {
     it('is correct for elements with attributes', () => {
       expectFromHtml('<div a="b"></div>').toEqual([
         ['Element', '<div a="b"></div>', '<div a="b">', '</div>'],
-        ['TextAttribute', 'a="b"', 'b'],
+        ['TextAttribute', 'a="b"', 'a', 'b'],
       ]);
     });
 
     it('is correct for elements with attributes without value', () => {
       expectFromHtml('<div a></div>').toEqual([
         ['Element', '<div a></div>', '<div a>', '</div>'],
-        ['TextAttribute', 'a', '<empty>'],
+        ['TextAttribute', 'a', 'a', '<empty>'],
       ]);
     });
   });
@@ -187,7 +199,7 @@ describe('R3 AST source spans', () => {
     it('is correct for * directives', () => {
       expectFromHtml('<div *ngIf></div>').toEqual([
         ['Template', '<div *ngIf></div>', '<div *ngIf>', '</div>'],
-        ['TextAttribute', 'ngIf', '<empty>'],
+        ['TextAttribute', 'ngIf', 'ngIf', '<empty>'],
         ['Element', '<div *ngIf></div>', '<div *ngIf>', '</div>'],
       ]);
     });
@@ -201,7 +213,7 @@ describe('R3 AST source spans', () => {
     it('is correct for reference via #...', () => {
       expectFromHtml('<ng-template #a></ng-template>').toEqual([
         ['Template', '<ng-template #a></ng-template>', '<ng-template #a>', '</ng-template>'],
-        ['Reference', '#a', '<empty>'],
+        ['Reference', '#a', 'a', '<empty>'],
       ]);
     });
 
@@ -210,14 +222,14 @@ describe('R3 AST source spans', () => {
         [
           'Template', '<ng-template #a="b"></ng-template>', '<ng-template #a="b">', '</ng-template>'
         ],
-        ['Reference', '#a="b"', 'b'],
+        ['Reference', '#a="b"', 'a', 'b'],
       ]);
     });
 
     it('is correct for reference via ref-...', () => {
       expectFromHtml('<ng-template ref-a></ng-template>').toEqual([
         ['Template', '<ng-template ref-a></ng-template>', '<ng-template ref-a>', '</ng-template>'],
-        ['Reference', 'ref-a', '<empty>'],
+        ['Reference', 'ref-a', 'a', '<empty>'],
       ]);
     });
 
@@ -227,7 +239,7 @@ describe('R3 AST source spans', () => {
           'Template', '<ng-template data-ref-a></ng-template>', '<ng-template data-ref-a>',
           '</ng-template>'
         ],
-        ['Reference', 'data-ref-a', '<empty>'],
+        ['Reference', 'data-ref-a', 'a', '<empty>'],
       ]);
     });
 
@@ -257,7 +269,7 @@ describe('R3 AST source spans', () => {
           'Template', '<ng-template k1="v1"></ng-template>', '<ng-template k1="v1">',
           '</ng-template>'
         ],
-        ['TextAttribute', 'k1="v1"', 'v1'],
+        ['TextAttribute', 'k1="v1"', 'k1', 'v1'],
       ]);
     });
 
@@ -284,8 +296,8 @@ describe('R3 AST source spans', () => {
           'Template', '<div *ngFor="let item of items"></div>', '<div *ngFor="let item of items">',
           '</div>'
         ],
-        ['TextAttribute', 'ngFor', '<empty>'],
-        ['BoundAttribute', '*ngFor="let item of items"', 'of', 'items'],
+        ['TextAttribute', 'ngFor', 'ngFor', '<empty>'],
+        ['BoundAttribute', 'of items', 'of', 'items'],
         ['Variable', 'let item ', 'item', '<empty>'],
         [
           'Element', '<div *ngFor="let item of items"></div>', '<div *ngFor="let item of items">',
@@ -303,8 +315,8 @@ describe('R3 AST source spans', () => {
         [
           'Template', '<div *ngFor="item of items"></div>', '<div *ngFor="item of items">', '</div>'
         ],
-        ['BoundAttribute', '*ngFor="item of items"', 'ngFor', 'item'],
-        ['BoundAttribute', '*ngFor="item of items"', 'of', 'items'],
+        ['BoundAttribute', 'ngFor="item ', 'ngFor', 'item'],
+        ['BoundAttribute', 'of items', 'of', 'items'],
         ['Element', '<div *ngFor="item of items"></div>', '<div *ngFor="item of items">', '</div>'],
       ]);
 
@@ -313,11 +325,9 @@ describe('R3 AST source spans', () => {
           'Template', '<div *ngFor="let item of items; trackBy: trackByFn"></div>',
           '<div *ngFor="let item of items; trackBy: trackByFn">', '</div>'
         ],
-        ['TextAttribute', 'ngFor', '<empty>'],
-        ['BoundAttribute', '*ngFor="let item of items; trackBy: trackByFn"', 'of', 'items'],
-        [
-          'BoundAttribute', '*ngFor="let item of items; trackBy: trackByFn"', 'trackBy', 'trackByFn'
-        ],
+        ['TextAttribute', 'ngFor', 'ngFor', '<empty>'],
+        ['BoundAttribute', 'of items; ', 'of', 'items'],
+        ['BoundAttribute', 'trackBy: trackByFn', 'trackBy', 'trackByFn'],
         ['Variable', 'let item ', 'item', '<empty>'],
         [
           'Element', '<div *ngFor="let item of items; trackBy: trackByFn"></div>',
@@ -330,7 +340,7 @@ describe('R3 AST source spans', () => {
     it('is correct for variables via let ...', () => {
       expectFromHtml('<div *ngIf="let a=b"></div>').toEqual([
         ['Template', '<div *ngIf="let a=b"></div>', '<div *ngIf="let a=b">', '</div>'],
-        ['TextAttribute', 'ngIf', '<empty>'],
+        ['TextAttribute', 'ngIf', 'ngIf', '<empty>'],
         ['Variable', 'let a=b', 'a', 'b'],
         ['Element', '<div *ngIf="let a=b"></div>', '<div *ngIf="let a=b">', '</div>'],
       ]);
@@ -339,7 +349,7 @@ describe('R3 AST source spans', () => {
     it('is correct for variables via as ...', () => {
       expectFromHtml('<div *ngIf="expr as local"></div>').toEqual([
         ['Template', '<div *ngIf="expr as local"></div>', '<div *ngIf="expr as local">', '</div>'],
-        ['BoundAttribute', '*ngIf="expr as local"', 'ngIf', 'expr'],
+        ['BoundAttribute', 'ngIf="expr ', 'ngIf', 'expr'],
         ['Variable', 'ngIf="expr as local', 'local', 'ngIf'],
         ['Element', '<div *ngIf="expr as local"></div>', '<div *ngIf="expr as local">', '</div>'],
       ]);
@@ -350,21 +360,21 @@ describe('R3 AST source spans', () => {
     it('is correct for event names case sensitive', () => {
       expectFromHtml('<div (someEvent)="v"></div>').toEqual([
         ['Element', '<div (someEvent)="v"></div>', '<div (someEvent)="v">', '</div>'],
-        ['BoundEvent', '(someEvent)="v"', 'v'],
+        ['BoundEvent', '(someEvent)="v"', 'someEvent', 'v'],
       ]);
     });
 
     it('is correct for bound events via on-', () => {
       expectFromHtml('<div on-event="v"></div>').toEqual([
         ['Element', '<div on-event="v"></div>', '<div on-event="v">', '</div>'],
-        ['BoundEvent', 'on-event="v"', 'v'],
+        ['BoundEvent', 'on-event="v"', 'event', 'v'],
       ]);
     });
 
     it('is correct for bound events via data-on-', () => {
       expectFromHtml('<div data-on-event="v"></div>').toEqual([
         ['Element', '<div data-on-event="v"></div>', '<div data-on-event="v">', '</div>'],
-        ['BoundEvent', 'data-on-event="v"', 'v'],
+        ['BoundEvent', 'data-on-event="v"', 'event', 'v'],
       ]);
     });
 
@@ -372,7 +382,7 @@ describe('R3 AST source spans', () => {
       expectFromHtml('<div [(prop)]="v"></div>').toEqual([
         ['Element', '<div [(prop)]="v"></div>', '<div [(prop)]="v">', '</div>'],
         ['BoundAttribute', '[(prop)]="v"', 'prop', 'v'],
-        ['BoundEvent', '[(prop)]="v"', 'v'],
+        ['BoundEvent', '[(prop)]="v"', 'prop', 'v'],
       ]);
     });
 
@@ -380,7 +390,7 @@ describe('R3 AST source spans', () => {
       expectFromHtml('<div bindon-prop="v"></div>').toEqual([
         ['Element', '<div bindon-prop="v"></div>', '<div bindon-prop="v">', '</div>'],
         ['BoundAttribute', 'bindon-prop="v"', 'prop', 'v'],
-        ['BoundEvent', 'bindon-prop="v"', 'v'],
+        ['BoundEvent', 'bindon-prop="v"', 'prop', 'v'],
       ]);
     });
 
@@ -388,7 +398,7 @@ describe('R3 AST source spans', () => {
       expectFromHtml('<div data-bindon-prop="v"></div>').toEqual([
         ['Element', '<div data-bindon-prop="v"></div>', '<div data-bindon-prop="v">', '</div>'],
         ['BoundAttribute', 'data-bindon-prop="v"', 'prop', 'v'],
-        ['BoundEvent', 'data-bindon-prop="v"', 'v'],
+        ['BoundEvent', 'data-bindon-prop="v"', 'prop', 'v'],
       ]);
     });
   });
@@ -397,29 +407,65 @@ describe('R3 AST source spans', () => {
     it('is correct for references via #...', () => {
       expectFromHtml('<div #a></div>').toEqual([
         ['Element', '<div #a></div>', '<div #a>', '</div>'],
-        ['Reference', '#a', '<empty>'],
+        ['Reference', '#a', 'a', '<empty>'],
       ]);
     });
 
     it('is correct for references with name', () => {
       expectFromHtml('<div #a="b"></div>').toEqual([
         ['Element', '<div #a="b"></div>', '<div #a="b">', '</div>'],
-        ['Reference', '#a="b"', 'b'],
+        ['Reference', '#a="b"', 'a', 'b'],
       ]);
     });
 
     it('is correct for references via ref-', () => {
       expectFromHtml('<div ref-a></div>').toEqual([
         ['Element', '<div ref-a></div>', '<div ref-a>', '</div>'],
-        ['Reference', 'ref-a', '<empty>'],
+        ['Reference', 'ref-a', 'a', '<empty>'],
       ]);
     });
 
     it('is correct for references via data-ref-', () => {
       expectFromHtml('<div ref-a></div>').toEqual([
         ['Element', '<div ref-a></div>', '<div ref-a>', '</div>'],
-        ['Reference', 'ref-a', '<empty>'],
+        ['Reference', 'ref-a', 'a', '<empty>'],
       ]);
+    });
+  });
+
+  describe('ICU expressions', () => {
+    it('is correct for variables and placeholders', () => {
+      expectFromHtml('<span i18n>{item.var, plural, other { {{item.placeholder}} items } }</span>')
+          .toEqual([
+            [
+              'Element',
+              '<span i18n>{item.var, plural, other { {{item.placeholder}} items } }</span>',
+              '<span i18n>', '</span>'
+            ],
+            ['Icu', '{item.var, plural, other { {{item.placeholder}} items } }'],
+            ['Icu:Var', 'item.var'],
+            ['Icu:Placeholder', '{{item.placeholder}}'],
+          ]);
+    });
+
+    it('is correct for nested ICUs', () => {
+      expectFromHtml(
+          '<span i18n>{item.var, plural, other { {{item.placeholder}} {nestedVar, plural, other { {{nestedPlaceholder}} }}} }</span>')
+          .toEqual([
+            [
+              'Element',
+              '<span i18n>{item.var, plural, other { {{item.placeholder}} {nestedVar, plural, other { {{nestedPlaceholder}} }}} }</span>',
+              '<span i18n>', '</span>'
+            ],
+            [
+              'Icu',
+              '{item.var, plural, other { {{item.placeholder}} {nestedVar, plural, other { {{nestedPlaceholder}} }}} }'
+            ],
+            ['Icu:Var', 'nestedVar'],
+            ['Icu:Var', 'item.var'],
+            ['Icu:Placeholder', '{{item.placeholder}}'],
+            ['Icu:Placeholder', '{{nestedPlaceholder}}'],
+          ]);
     });
   });
 });

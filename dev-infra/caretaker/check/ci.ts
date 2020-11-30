@@ -7,53 +7,82 @@
  */
 
 import fetch from 'node-fetch';
+import {fetchActiveReleaseTrains, ReleaseTrain} from '../../release/versioning/index';
 
-import {bold, green, info, red} from '../../utils/console';
-import {GitClient} from '../../utils/git';
+import {bold, debug, info} from '../../utils/console';
+import {BaseModule} from './base';
 
 
-/** The results of checking the status of CI.  */
-interface StatusCheckResult {
-  status: 'success'|'failed'|'canceled'|'infrastructure_fail'|'timedout'|'failed'|'no_tests';
-  timestamp: Date;
-  buildUrl: string;
-}
+/** The result of checking a branch on CI. */
+type CiBranchStatus = 'success'|'failed'|'not found';
 
-/** Retrieve and log status of CI for the project. */
-export async function printCiStatus(git: GitClient) {
-  info.group(bold(`CI`));
-  // TODO(josephperrott): Expand list of branches checked to all active branches.
-  await printStatus(git, 'master');
-  info.groupEnd();
-  info();
-}
+/** A list of results for checking CI branches. */
+type CiData = {
+  active: boolean,
+  name: string,
+  label: string,
+  status: CiBranchStatus,
+}[];
 
-/** Log the status of CI for a given branch to the console. */
-async function printStatus(git: GitClient, branch: string) {
-  const result = await getStatusOfBranch(git, branch);
-  const branchName = branch.padEnd(10);
-  if (result === null) {
-    info(`${branchName} was not found on CircleCI`);
-  } else if (result.status === 'success') {
-    info(`${branchName} ✅`);
-  } else {
-    info(`${branchName} ❌ (Ran at: ${result.timestamp.toLocaleString()})`);
+export class CiModule extends BaseModule<CiData> {
+  async retrieveData() {
+    const gitRepoWithApi = {api: this.git.github, ...this.git.remoteConfig};
+    const releaseTrains = await fetchActiveReleaseTrains(gitRepoWithApi);
+
+    const ciResultPromises = Object.entries(releaseTrains).map(async ([trainName, train]: [
+                                                                 string, ReleaseTrain|null
+                                                               ]) => {
+      if (train === null) {
+        return {
+          active: false,
+          name: trainName,
+          label: '',
+          status: 'not found' as const,
+        };
+      }
+
+      return {
+        active: true,
+        name: train.branchName,
+        label: `${trainName} (${train.branchName})`,
+        status: await this.getBranchStatusFromCi(train.branchName),
+      };
+    });
+
+    return await Promise.all(ciResultPromises);
   }
-}
 
-/** Get the CI status of a given branch from CircleCI. */
-async function getStatusOfBranch(git: GitClient, branch: string): Promise<StatusCheckResult|null> {
-  const {owner, name} = git.remoteConfig;
-  const url = `https://circleci.com/api/v1.1/project/gh/${owner}/${name}/tree/${
-      branch}?limit=1&filter=completed&shallow=true`;
-  const result = (await fetch(url).then(result => result.json()))?.[0];
-
-  if (result) {
-    return {
-      status: result.outcome,
-      timestamp: new Date(result.stop_time),
-      buildUrl: result.build_url
-    };
+  async printToTerminal() {
+    const data = await this.data;
+    const minLabelLength = Math.max(...data.map(result => result.label.length));
+    info.group(bold(`CI`));
+    data.forEach(result => {
+      if (result.active === false) {
+        debug(`No active release train for ${result.name}`);
+        return;
+      }
+      const label = result.label.padEnd(minLabelLength);
+      if (result.status === 'not found') {
+        info(`${result.name} was not found on CircleCI`);
+      } else if (result.status === 'success') {
+        info(`${label} ✅`);
+      } else {
+        info(`${label} ❌`);
+      }
+    });
+    info.groupEnd();
+    info();
   }
-  return null;
+
+  /** Get the CI status of a given branch from CircleCI. */
+  private async getBranchStatusFromCi(branch: string): Promise<CiBranchStatus> {
+    const {owner, name} = this.git.remoteConfig;
+    const url = `https://circleci.com/gh/${owner}/${name}/tree/${branch}.svg?style=shield`;
+    const result = await fetch(url).then(result => result.text());
+
+    if (result && !result.includes('no builds')) {
+      return result.includes('passing') ? 'success' : 'failed';
+    }
+    return 'not found';
+  }
 }

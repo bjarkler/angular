@@ -71,7 +71,7 @@ describe('type check blocks diagnostics', () => {
       const TEMPLATE = `<ng-template let-method>{{ method(a, b) }}</ng-template>`;
       expect(tcbWithSpans(TEMPLATE))
           .toContain(
-              '(_t2 /*27,39*/).method /*27,33*/(((ctx).a /*34,35*/) /*34,35*/, ((ctx).b /*37,38*/) /*37,38*/) /*27,39*/');
+              '(_t2 /*27,39*/) /*27,33*/(((ctx).a /*34,35*/) /*34,35*/, ((ctx).b /*37,38*/) /*37,38*/) /*27,39*/');
     });
 
     it('should annotate function calls', () => {
@@ -92,6 +92,12 @@ describe('type check blocks diagnostics', () => {
       expect(tcbWithSpans(TEMPLATE))
           .toContain(
               '(((((((ctx).a /*14,15*/) /*14,15*/).b /*16,17*/) /*14,17*/).c /*18,19*/) /*14,23*/ = ((ctx).d /*22,23*/) /*22,23*/) /*14,23*/');
+    });
+
+    it('should $event property writes', () => {
+      const TEMPLATE = `<div (click)='a = $event'></div>`;
+      expect(tcbWithSpans(TEMPLATE))
+          .toContain('(((ctx).a /*14,15*/) /*14,24*/ = ($event /*18,24*/)) /*14,24*/;');
     });
 
     it('should annotate keyed property access', () => {
@@ -178,7 +184,7 @@ describe('type check blocks diagnostics', () => {
         }];
         const TEMPLATE = `<my-cmp [inputA]="''"></my-cmp>`;
         expect(tcbWithSpans(TEMPLATE, DIRECTIVES))
-            .toContain('_t1.inputA = ("" /*18,20*/) /*8,21*/;');
+            .toContain('_t1.inputA /*9,15*/ = ("" /*18,20*/) /*8,21*/;');
       });
     });
   });

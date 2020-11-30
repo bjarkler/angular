@@ -11,9 +11,8 @@ import * as ts from 'typescript';
 import {absoluteFrom, getFileSystem, getSourceFileOrError} from '../../../src/ngtsc/file_system';
 import {runInEachFileSystem, TestFile} from '../../../src/ngtsc/file_system/testing';
 import {MockLogger} from '../../../src/ngtsc/logging/testing';
-import {ClassMemberKind, ConcreteDeclaration, CtorParameter, Decorator, DownleveledEnum, isNamedClassDeclaration, isNamedFunctionDeclaration, isNamedVariableDeclaration, KnownDeclaration, TypeScriptReflectionHost, TypeValueReferenceKind} from '../../../src/ngtsc/reflection';
-import {getDeclaration} from '../../../src/ngtsc/testing';
-import {loadFakeCore, loadTestFiles} from '../../../test/helpers';
+import {ClassMemberKind, ConcreteDeclaration, CtorParameter, DeclarationKind, Decorator, DownleveledEnum, isNamedClassDeclaration, isNamedFunctionDeclaration, isNamedVariableDeclaration, KnownDeclaration, TypeScriptReflectionHost, TypeValueReferenceKind} from '../../../src/ngtsc/reflection';
+import {getDeclaration, loadFakeCore, loadTestFiles} from '../../../src/ngtsc/testing';
 import {DelegatingReflectionHost} from '../../src/host/delegating_host';
 import {Esm2015ReflectionHost, getIifeBody} from '../../src/host/esm2015_host';
 import {Esm5ReflectionHost} from '../../src/host/esm5_host';
@@ -223,7 +222,7 @@ runInEachFileSystem(() => {
     }());
     var SuperClass = (function() { function SuperClass() {} return SuperClass; }());
     var ChildClass = /** @class */ (function (_super) {
-      __extends(ChildClass, _super);
+      __extends(InnerChildClass, _super);
       function InnerChildClass() {}
       return InnerChildClass;
     }(SuperClass);
@@ -1858,6 +1857,7 @@ runInEachFileSystem(() => {
                 const helperDeclaration = host.getDeclarationOfIdentifier(helperIdentifier);
 
                 expect(helperDeclaration).toEqual({
+                  kind: DeclarationKind.Concrete,
                   known: knownAs,
                   node: getHelperDeclaration(helperName),
                   viaModule,
@@ -2253,9 +2253,9 @@ runInEachFileSystem(() => {
           const helperDeclaration = host.getDeclarationOfIdentifier(helperIdentifier);
 
           expect(helperDeclaration).toEqual({
+            kind: DeclarationKind.Inline,
             known: knownAs,
-            expression: helperIdentifier,
-            node: null,
+            node: helperIdentifier,
             viaModule: null,
           });
         };
@@ -2284,9 +2284,9 @@ runInEachFileSystem(() => {
           const helperDeclaration = host.getDeclarationOfIdentifier(helperIdentifier);
 
           expect(helperDeclaration).toEqual({
+            kind: DeclarationKind.Inline,
             known: knownAs,
-            expression: helperIdentifier,
-            node: null,
+            node: helperIdentifier,
             viaModule: null,
           });
         };

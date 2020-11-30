@@ -12,7 +12,6 @@ import * as sanitization from '../../sanitization/sanitization';
 import * as r3 from '../index';
 
 
-
 /**
  * A mapping of the @angular/core API surface used in generated expressions to the actual symbols.
  *
@@ -166,4 +165,6 @@ export const angularCoreEnv: {[name: string]: Function} =
        'ɵɵsanitizeScript': sanitization.ɵɵsanitizeScript,
        'ɵɵsanitizeUrl': sanitization.ɵɵsanitizeUrl,
        'ɵɵsanitizeUrlOrResourceUrl': sanitization.ɵɵsanitizeUrlOrResourceUrl,
+       'ɵɵtrustConstantHtml': sanitization.ɵɵtrustConstantHtml,
+       'ɵɵtrustConstantResourceUrl': sanitization.ɵɵtrustConstantResourceUrl,
      }))();

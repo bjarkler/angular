@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, BindingPipe, BindingType, BoundTarget, DYNAMIC_TYPE, ImplicitReceiver, MethodCall, ParsedEventType, ParseSourceSpan, PropertyRead, PropertyWrite, SchemaMetadata, TmplAstBoundAttribute, TmplAstBoundEvent, TmplAstBoundText, TmplAstElement, TmplAstNode, TmplAstReference, TmplAstTemplate, TmplAstTextAttribute, TmplAstVariable} from '@angular/compiler';
+import {AST, BindingPipe, BindingType, BoundTarget, DYNAMIC_TYPE, ImplicitReceiver, MethodCall, ParsedEventType, ParseSourceSpan, PropertyRead, PropertyWrite, SchemaMetadata, ThisReceiver, TmplAstBoundAttribute, TmplAstBoundEvent, TmplAstBoundText, TmplAstElement, TmplAstIcu, TmplAstNode, TmplAstReference, TmplAstTemplate, TmplAstTextAttribute, TmplAstVariable} from '@angular/compiler';
 import * as ts from 'typescript';
 
 import {Reference} from '../../imports';
@@ -15,13 +15,13 @@ import {ClassDeclaration} from '../../reflection';
 import {TemplateId, TypeCheckableDirectiveMeta, TypeCheckBlockMetadata} from '../api';
 
 import {addExpressionIdentifier, ExpressionIdentifier, markIgnoreDiagnostics} from './comments';
-import {addParseSpanInfo, addTemplateId, wrapForDiagnostics} from './diagnostics';
+import {addParseSpanInfo, addTemplateId, wrapForDiagnostics, wrapForTypeChecker} from './diagnostics';
 import {DomSchemaChecker} from './dom';
 import {Environment} from './environment';
 import {astToTypescript, NULL_AS_ANY} from './expression';
 import {OutOfBandDiagnosticRecorder} from './oob';
 import {ExpressionSemanticVisitor} from './template_semantics';
-import {checkIfClassIsExported, checkIfGenericTypesAreUnbound, tsCallMethod, tsCastToAny, tsCreateElement, tsCreateTypeQueryForCoercedInput, tsCreateVariable, tsDeclareVariable} from './ts_util';
+import {tsCallMethod, tsCastToAny, tsCreateElement, tsCreateTypeQueryForCoercedInput, tsCreateVariable, tsDeclareVariable} from './ts_util';
 
 /**
  * Given a `ts.ClassDeclaration` for a component, and metadata regarding that component, compose a
@@ -176,10 +176,18 @@ class TcbVariableOp extends TcbOp {
     const initializer = ts.createPropertyAccess(
         /* expression */ ctx,
         /* name */ this.variable.value || '$implicit');
-    addParseSpanInfo(initializer, this.variable.sourceSpan);
+    addParseSpanInfo(id, this.variable.keySpan);
 
     // Declare the variable, and return its identifier.
-    this.scope.addStatement(tsCreateVariable(id, initializer));
+    let variable: ts.VariableStatement;
+    if (this.variable.valueSpan !== undefined) {
+      addParseSpanInfo(initializer, this.variable.valueSpan);
+      variable = tsCreateVariable(id, wrapForTypeChecker(initializer));
+    } else {
+      variable = tsCreateVariable(id, initializer);
+    }
+    addParseSpanInfo(variable.declarationList.declarations[0], this.variable.sourceSpan);
+    this.scope.addStatement(variable);
     return id;
   }
 }
@@ -194,9 +202,8 @@ class TcbTemplateContextOp extends TcbOp {
     super();
   }
 
-  get optional() {
-    return false;
-  }
+  // The declaration of the context variable is only needed when the context is actually referenced.
+  readonly optional = true;
 
   execute(): ts.Identifier {
     // Allocate a template ctx variable and declare it with an 'any' type. The type of this variable
@@ -444,8 +451,29 @@ class TcbReferenceOp extends TcbOp {
       initializer = ts.createParen(initializer);
     }
     addParseSpanInfo(initializer, this.node.sourceSpan);
+    addParseSpanInfo(id, this.node.keySpan);
 
     this.scope.addStatement(tsCreateVariable(id, initializer));
+    return id;
+  }
+}
+
+/**
+ * A `TcbOp` which is used when the target of a reference is missing. This operation generates a
+ * variable of type any for usages of the invalid reference to resolve to. The invalid reference
+ * itself is recorded out-of-band.
+ */
+class TcbInvalidReferenceOp extends TcbOp {
+  constructor(private readonly tcb: Context, private readonly scope: Scope) {
+    super();
+  }
+
+  // The declaration of a missing reference is only needed when the reference is resolved.
+  readonly optional = true;
+
+  execute(): ts.Identifier {
+    const id = this.tcb.allocateId();
+    this.scope.addStatement(tsCreateVariable(id, NULL_AS_ANY));
     return id;
   }
 }
@@ -618,6 +646,9 @@ class TcbDirectiveInputsOp extends TcbOp {
               ts.createPropertyAccess(dirId, ts.createIdentifier(fieldName));
         }
 
+        if (input.attribute.keySpan !== undefined) {
+          addParseSpanInfo(target, input.attribute.keySpan);
+        }
         // Finally the assignment is extended by assigning it into the target expression.
         assignment = ts.createBinary(target, ts.SyntaxKind.EqualsToken, assignment);
       }
@@ -840,6 +871,7 @@ export class TcbDirectiveOutputsOp extends TcbOp {
           dirId = this.scope.resolve(this.node, this.dir);
         }
         const outputField = ts.createElementAccess(dirId, ts.createStringLiteral(field));
+        addParseSpanInfo(outputField, output.keySpan);
         const outputHelper =
             ts.createCall(this.tcb.env.declareOutputHelper(), undefined, [outputField]);
         const subscribeFn = ts.createPropertyAccess(outputHelper, 'subscribe');
@@ -963,6 +995,30 @@ class TcbUnclaimedOutputsOp extends TcbOp {
 }
 
 /**
+ * A `TcbOp` which generates a completion point for the component context.
+ *
+ * This completion point looks like `ctx. ;` in the TCB output, and does not produce diagnostics.
+ * TypeScript autocompletion APIs can be used at this completion point (after the '.') to produce
+ * autocompletion results of properties and methods from the template's component context.
+ */
+class TcbComponentContextCompletionOp extends TcbOp {
+  constructor(private scope: Scope) {
+    super();
+  }
+
+  readonly optional = false;
+
+  execute(): null {
+    const ctx = ts.createIdentifier('ctx');
+    const ctxDot = ts.createPropertyAccess(ctx, '');
+    markIgnoreDiagnostics(ctxDot);
+    addExpressionIdentifier(ctxDot, ExpressionIdentifier.COMPONENT_COMPLETION);
+    this.scope.addStatement(ts.createExpressionStatement(ctxDot));
+    return null;
+  }
+}
+
+/**
  * Value used to break a circular reference between `TcbOp`s.
  *
  * This value is returned whenever `TcbOp`s have a circular dependency. The expression is a non-null
@@ -998,11 +1054,11 @@ export class Context {
     return ts.createIdentifier(`_t${this.nextId++}`);
   }
 
-  getPipeByName(name: string): ts.Expression|null {
+  getPipeByName(name: string): Reference<ClassDeclaration<ts.ClassDeclaration>>|null {
     if (!this.pipes.has(name)) {
       return null;
     }
-    return this.env.pipeInst(this.pipes.get(name)!);
+    return this.pipes.get(name)!;
   }
 }
 
@@ -1088,6 +1144,11 @@ class Scope {
       tcb: Context, parent: Scope|null, templateOrNodes: TmplAstTemplate|(TmplAstNode[]),
       guard: ts.Expression|null): Scope {
     const scope = new Scope(tcb, parent, guard);
+
+    if (parent === null && tcb.env.config.enableTemplateTypeChecker) {
+      // Add an autocompletion point for the component context.
+      scope.opQueue.push(new TcbComponentContextCompletionOp(scope));
+    }
 
     let children: TmplAstNode[];
 
@@ -1304,19 +1365,23 @@ class Scope {
       this.checkAndAppendReferencesOfNode(node);
     } else if (node instanceof TmplAstBoundText) {
       this.opQueue.push(new TcbTextInterpolationOp(this.tcb, this, node));
+    } else if (node instanceof TmplAstIcu) {
+      this.appendIcuExpressions(node);
     }
   }
 
   private checkAndAppendReferencesOfNode(node: TmplAstElement|TmplAstTemplate): void {
     for (const ref of node.references) {
       const target = this.tcb.boundTarget.getReferenceTarget(ref);
-      if (target === null) {
-        this.tcb.oobRecorder.missingReferenceTarget(this.tcb.id, ref);
-        continue;
-      }
 
       let ctxIndex: number;
-      if (target instanceof TmplAstTemplate || target instanceof TmplAstElement) {
+      if (target === null) {
+        // The reference is invalid if it doesn't have a target, so report it as an error.
+        this.tcb.oobRecorder.missingReferenceTarget(this.tcb.id, ref);
+
+        // Any usages of the invalid reference will be resolved to a variable of type any.
+        ctxIndex = this.opQueue.push(new TcbInvalidReferenceOp(this.tcb, this)) - 1;
+      } else if (target instanceof TmplAstTemplate || target instanceof TmplAstElement) {
         ctxIndex = this.opQueue.push(new TcbReferenceOp(this.tcb, this, ref, node, target)) - 1;
       } else {
         ctxIndex =
@@ -1430,6 +1495,17 @@ class Scope {
       this.appendDeepSchemaChecks(node.children);
     }
   }
+
+  private appendIcuExpressions(node: TmplAstIcu): void {
+    for (const variable of Object.values(node.vars)) {
+      this.opQueue.push(new TcbTextInterpolationOp(this.tcb, this, variable));
+    }
+    for (const placeholder of Object.values(node.placeholders)) {
+      if (placeholder instanceof TmplAstBoundText) {
+        this.opQueue.push(new TcbTextInterpolationOp(this.tcb, this, placeholder));
+      }
+    }
+  }
 }
 
 interface TcbBoundInput {
@@ -1526,25 +1602,28 @@ class TcbExpressionTranslator {
       return ts.createIdentifier('ctx');
     } else if (ast instanceof BindingPipe) {
       const expr = this.translate(ast.exp);
+      const pipeRef = this.tcb.getPipeByName(ast.name);
       let pipe: ts.Expression|null;
-      if (this.tcb.env.config.checkTypeOfPipes) {
-        pipe = this.tcb.getPipeByName(ast.name);
-        if (pipe === null) {
-          // No pipe by that name exists in scope. Record this as an error.
-          this.tcb.oobRecorder.missingPipe(this.tcb.id, ast);
+      if (pipeRef === null) {
+        // No pipe by that name exists in scope. Record this as an error.
+        this.tcb.oobRecorder.missingPipe(this.tcb.id, ast);
 
-          // Return an 'any' value to at least allow the rest of the expression to be checked.
-          pipe = NULL_AS_ANY;
-        }
+        // Use an 'any' value to at least allow the rest of the expression to be checked.
+        pipe = NULL_AS_ANY;
+      } else if (this.tcb.env.config.checkTypeOfPipes) {
+        // Use a variable declared as the pipe's type.
+        pipe = this.tcb.env.pipeInst(pipeRef);
       } else {
-        pipe = ts.createParen(ts.createAsExpression(
-            ts.createNull(), ts.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)));
+        // Use an 'any' value when not checking the type of the pipe.
+        pipe = NULL_AS_ANY;
       }
       const args = ast.args.map(arg => this.translate(arg));
       const result = tsCallMethod(pipe, 'transform', [expr, ...args]);
       addParseSpanInfo(result, ast.sourceSpan);
       return result;
-    } else if (ast instanceof MethodCall && ast.receiver instanceof ImplicitReceiver) {
+    } else if (
+        ast instanceof MethodCall && ast.receiver instanceof ImplicitReceiver &&
+        !(ast.receiver instanceof ThisReceiver)) {
       // Resolve the special `$any(expr)` syntax to insert a cast of the argument to type `any`.
       // `$any(expr)` -> `expr as any`
       if (ast.name === '$any' && ast.args.length === 1) {
@@ -1565,7 +1644,7 @@ class TcbExpressionTranslator {
         return null;
       }
 
-      const method = ts.createPropertyAccess(wrapForDiagnostics(receiver), ast.name);
+      const method = wrapForDiagnostics(receiver);
       addParseSpanInfo(method, ast.nameSpan);
       const args = ast.args.map(arg => this.translate(arg));
       const node = ts.createCall(method, undefined, args);
@@ -1801,27 +1880,12 @@ class TcbEventHandlerTranslator extends TcbExpressionTranslator {
     // function that the converted expression becomes a child of, just create a reference to the
     // parameter by its name.
     if (ast instanceof PropertyRead && ast.receiver instanceof ImplicitReceiver &&
-        ast.name === EVENT_PARAMETER) {
+        !(ast.receiver instanceof ThisReceiver) && ast.name === EVENT_PARAMETER) {
       const event = ts.createIdentifier(EVENT_PARAMETER);
       addParseSpanInfo(event, ast.nameSpan);
       return event;
     }
 
     return super.resolve(ast);
-  }
-}
-
-export function requiresInlineTypeCheckBlock(node: ClassDeclaration<ts.ClassDeclaration>): boolean {
-  // In order to qualify for a declared TCB (not inline) two conditions must be met:
-  // 1) the class must be exported
-  // 2) it must not have constrained generic types
-  if (!checkIfClassIsExported(node)) {
-    // Condition 1 is false, the class is not exported.
-    return true;
-  } else if (!checkIfGenericTypesAreUnbound(node)) {
-    // Condition 2 is false, the class has constrained generic types
-    return true;
-  } else {
-    return false;
   }
 }

@@ -7,6 +7,8 @@ ts_library(
     visibility = ["//packages/core/schematics/test/google3:__pkg__"],
     deps = [
         "//packages/core/schematics/migrations/dynamic-queries",
+        "//packages/core/schematics/migrations/initial-navigation",
+        "//packages/core/schematics/migrations/initial-navigation/google3",
         "//packages/core/schematics/migrations/missing-injectable",
         "//packages/core/schematics/migrations/missing-injectable/google3",
         "//packages/core/schematics/migrations/navigation-extras-omissions",
@@ -17,6 +19,7 @@ ts_library(
         "//packages/core/schematics/migrations/template-var-assignment",
         "//packages/core/schematics/migrations/undecorated-classes-with-decorated-fields",
         "//packages/core/schematics/migrations/undecorated-classes-with-decorated-fields/google3",
+        "//packages/core/schematics/migrations/wait-for-async",
         "//packages/core/schematics/utils",
         "//packages/core/schematics/utils/tslint",
         "@npm//tslint",
