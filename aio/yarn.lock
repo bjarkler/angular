@@ -10871,10 +10871,10 @@ safeps@7.0.1:
   resolved "https://registry.yarnpkg.com/safer-buffer/-/safer-buffer-2.1.2.tgz#44fa161b0187b9549dd84bb91802f9bd8385cd6a"
   integrity sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==
 
-safevalues@^0.1.2:
-  version "0.1.2"
-  resolved "https://registry.yarnpkg.com/safevalues/-/safevalues-0.1.2.tgz#c67c50cc18ac8076bc758ef2b86b26e644240737"
-  integrity sha512-FE5ZwKnkD1Slj5381Adifcz+KdRP4g3tOaCBfQkWDnKAV/HBLSenltPdg8HvJpD/8jYov1nOnbbbAQ8KffuBxA==
+safevalues@^0.1.3:
+  version "0.1.3"
+  resolved "https://registry.yarnpkg.com/safevalues/-/safevalues-0.1.3.tgz#24444ce57bf22bccd62113e79dadec7cdc34976d"
+  integrity sha512-eWVnJAw0QKjJAniL5re5DTBvcAbwmJ5o+qN1R93dcxSjdFBzyKvfLf/5EUZ7zt+FG58sTfoI0QRu+HZTJFg6Iw==
 
 sass-loader@11.0.1:
   version "11.0.1"

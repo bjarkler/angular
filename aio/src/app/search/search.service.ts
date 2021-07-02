@@ -3,6 +3,7 @@ import { ConnectableObservable, Observable, race, ReplaySubject, timer } from 'r
 import { concatMap, first, publishReplay } from 'rxjs/operators';
 import { WebWorkerClient } from 'app/shared/web-worker';
 import { SearchResults } from 'app/search/interfaces';
+import { scriptUrl, unwrapScriptUrlForSink } from 'safevalues';
 
 @Injectable()
 export class SearchService {
@@ -27,8 +28,7 @@ export class SearchService {
       .pipe(
         concatMap(() => {
           // Create the worker and load the index
-          // tslint:disable-next-line: whitespace
-          const worker = new Worker(new URL('./search.worker', import.meta.url), { type: 'module' });
+          const worker = new Worker(unwrapScriptUrlForSink(scriptUrl`./search.worker`), { type: 'module'});
           this.worker = WebWorkerClient.create(worker, this.zone);
           return this.worker.sendMessage<boolean>('load-index');
         }),

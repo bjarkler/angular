@@ -47,7 +47,14 @@ import { SwUpdatesModule } from 'app/sw-updates/sw-updates.module';
 
 import { environment } from '../environments/environment';
 
+import {scriptUrl} from 'safevalues';
+import {concatHtmls} from 'safevalues/builders/html_builders';
+import {assertIsTemplateObject} from 'safevalues/implementation/safe_string_literal';
+
+import {htmlFromStringKnownToSatisfyTypeContract} from 'safevalues/unsafe/reviewed';
+
 function svg(constantSvg: TemplateStringsArray): TrustedHTML {
+  assertIsTemplateObject(constantSvg, false, 'This needs to be static');
   return htmlFromStringKnownToSatisfyTypeContract(constantSvg[0], 'static SVG markup');
 }
 
