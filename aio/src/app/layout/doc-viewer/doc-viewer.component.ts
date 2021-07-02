@@ -8,6 +8,8 @@ import { DocumentContents, FILE_NOT_FOUND_ID, FETCHING_ERROR_ID } from 'app/docu
 import { Logger } from 'app/shared/logger.service';
 import { TocService } from 'app/shared/toc.service';
 import { ElementsLoader } from 'app/custom-elements/elements-loader';
+import {unwrapHtmlForSink} from 'safevalues';
+import {htmlFromStringKnownToSatisfyTypeContract} from 'safevalues/unsafe/reviewed';
 
 
 // Constants
@@ -15,7 +17,8 @@ export const NO_ANIMATIONS = 'no-animations';
 
 // Initialization prevents flicker once pre-rendering is on
 const initialDocViewerElement = document.querySelector('aio-doc-viewer');
-const initialDocViewerContent = initialDocViewerElement ? initialDocViewerElement.innerHTML : '';
+const initialDocViewerContent = htmlFromStringKnownToSatisfyTypeContract(
+    initialDocViewerElement?.innerHTML ?? '', 'existing innerHTML content');
 
 @Component({
   selector: 'aio-doc-viewer',
@@ -69,8 +72,9 @@ export class DocViewerComponent implements OnDestroy {
       private tocService: TocService,
       private elementsLoader: ElementsLoader) {
     this.hostElement = elementRef.nativeElement;
+
     // Security: the initialDocViewerContent comes from the prerendered DOM and is considered to be secure
-    this.hostElement.innerHTML = initialDocViewerContent;
+    this.hostElement.innerHTML = unwrapHtmlForSink(initialDocViewerContent);
 
     if (this.hostElement.firstElementChild) {
       this.currViewContainer = this.hostElement.firstElementChild as HTMLElement;
@@ -100,7 +104,10 @@ export class DocViewerComponent implements OnDestroy {
 
     if (titleEl && needsToc && !embeddedToc) {
       // Add an embedded ToC if it's needed and there isn't one in the content already.
-      titleEl.insertAdjacentHTML('afterend', '<aio-toc class="embedded"></aio-toc>');
+      titleEl.insertAdjacentHTML(
+          'afterend',
+          unwrapHtmlForSink(htmlFromStringKnownToSatisfyTypeContract(
+              '<aio-toc class="embedded"></aio-toc>', 'constant HTML')));
     } else if (!needsToc && embeddedToc && embeddedToc.parentNode !== null) {
       // Remove the embedded Toc if it's there and not needed.
       // We cannot use ChildNode.remove() because of IE11
@@ -134,9 +141,15 @@ export class DocViewerComponent implements OnDestroy {
     this.setNoIndex(doc.id === FILE_NOT_FOUND_ID || doc.id === FETCHING_ERROR_ID);
 
     return this.void$.pipe(
-        // Security: `doc.contents` is always authored by the documentation team
-        //           and is considered to be safe.
-        tap(() => this.nextViewContainer.innerHTML = doc.contents || ''),
+        tap(() => {
+          if (doc.contents === null) {
+            this.nextViewContainer.textContent = '';
+          } else {
+            // Security: `doc.contents` is always authored by the documentation team
+            //           and is considered to be safe.
+            this.nextViewContainer.innerHTML = unwrapHtmlForSink(doc.contents);
+          }
+        }),
         tap(() => addTitleAndToc = this.prepareTitleAndToc(this.nextViewContainer, doc.id)),
         switchMap(() => this.elementsLoader.loadContainedCustomElements(this.nextViewContainer)),
         tap(() => this.docReady.emit()),
@@ -145,7 +158,7 @@ export class DocViewerComponent implements OnDestroy {
         catchError(err => {
           const errorMessage = `${(err instanceof Error) ? err.stack : err}`;
           this.logger.error(new Error(`[DocViewer] Error preparing document '${doc.id}': ${errorMessage}`));
-          this.nextViewContainer.innerHTML = '';
+          this.nextViewContainer.textContent = '';
           this.setNoIndex(true);
 
           // TODO(gkalpak): Remove this once gathering debug info is no longer needed.
@@ -247,7 +260,7 @@ export class DocViewerComponent implements OnDestroy {
           const prevViewContainer = this.currViewContainer;
           this.currViewContainer = this.nextViewContainer;
           this.nextViewContainer = prevViewContainer;
-          this.nextViewContainer.innerHTML = '';  // Empty to release memory.
+          this.nextViewContainer.textContent = '';  // Empty to release memory.
         }),
     );
   }

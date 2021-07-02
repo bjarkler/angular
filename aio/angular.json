@@ -138,6 +138,12 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "browserTarget": "site:build",
+            "headers": {
+              "Content-Security-Policy-Report-Only": "require-trusted-types-for 'script'; trusted-types angular angular#unsafe-bypass analytics google#safe"
+            }
+          },
           "configurations": {
             "next": {
               "browserTarget": "site:build:next"

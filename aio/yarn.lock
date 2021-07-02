@@ -1766,6 +1766,11 @@
   resolved "https://registry.yarnpkg.com/@types/stemmer/-/stemmer-1.0.2.tgz#bd8354f50b3c9b87c351d169240e45cf1fa1f5e8"
   integrity sha512-2gWEIFqVZjjZxo8/TcugCAl7nW9Jd9ArEDpTAc5nH7d+ZUkreHA7GzuFcLZ0sflLrA5b1PZ+2yDyHJcuP9KWWw==
 
+"@types/trusted-types@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@types/trusted-types/-/trusted-types-2.0.0.tgz#aee6e868fcef74f2b8c71614b6df81a601a42f17"
+  integrity sha512-I8MnZqNXsOLHsU111oHbn3khtvKMi5Bn4qVFsIWSJcCP1KKDiXX5AEw8UPk0nSopeC+Hvxt6yAy1/a5PailFqg==
+
 "@types/unist@*", "@types/unist@^2.0.0", "@types/unist@^2.0.2":
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/@types/unist/-/unist-2.0.3.tgz#9c088679876f374eb5983f150d4787aa6fb32d7e"
@@ -10865,6 +10870,11 @@ safeps@7.0.1:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/safer-buffer/-/safer-buffer-2.1.2.tgz#44fa161b0187b9549dd84bb91802f9bd8385cd6a"
   integrity sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==
+
+safevalues@^0.1.2:
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/safevalues/-/safevalues-0.1.2.tgz#c67c50cc18ac8076bc758ef2b86b26e644240737"
+  integrity sha512-FE5ZwKnkD1Slj5381Adifcz+KdRP4g3tOaCBfQkWDnKAV/HBLSenltPdg8HvJpD/8jYov1nOnbbbAQ8KffuBxA==
 
 sass-loader@11.0.1:
   version "11.0.1"

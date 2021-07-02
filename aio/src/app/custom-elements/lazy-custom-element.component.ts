@@ -1,5 +1,7 @@
 import { Component, ElementRef, Input, OnInit } from '@angular/core';
 import { Logger } from 'app/shared/logger.service';
+import {unwrapHtmlForSink} from 'safevalues';
+import {htmlFromStringKnownToSatisfyTypeContract} from 'safevalues/unsafe/reviewed';
 import { ElementsLoader } from './elements-loader';
 
 @Component({
@@ -21,7 +23,9 @@ export class LazyCustomElementComponent implements OnInit {
       return;
     }
 
-    this.elementRef.nativeElement.innerHTML = `<${this.selector}></${this.selector}>`;
+    this.elementRef.nativeElement.innerHTML =
+        unwrapHtmlForSink(htmlFromStringKnownToSatisfyTypeContract(
+            `<${this.selector}></${this.selector}>`, 'selector is validated'));
     this.elementsLoader.loadCustomElement(this.selector);
   }
 }

@@ -1,10 +1,11 @@
 /* tslint:disable component-selector */
 import { AfterViewInit, Component, ElementRef, Input, OnInit, QueryList, ViewChild, ViewChildren } from '@angular/core';
+import {htmlFromStringKnownToSatisfyTypeContract} from 'safevalues/unsafe/reviewed';
 import { CodeComponent } from './code.component';
 
 export interface TabInfo {
   class: string;
-  code: string;
+  code: TrustedHTML;
   path: string;
   region: string;
 
@@ -67,7 +68,7 @@ export class CodeTabsComponent implements OnInit, AfterViewInit {
     // NOTE:
     // In IE11, doing this also empties the `<code-pane>` nodes captured in `codeExamples` ¯\_(ツ)_/¯
     // Only remove the unnecessary nodes after having captured the `<code-pane>` contents.
-    contentElem.innerHTML = '';
+    contentElem.innerText = '';
   }
 
   ngAfterViewInit() {
@@ -80,7 +81,8 @@ export class CodeTabsComponent implements OnInit, AfterViewInit {
   private getTabInfo(tabContent: Element): TabInfo {
     return {
       class: tabContent.getAttribute('class') || '',
-      code: tabContent.innerHTML,
+      code: htmlFromStringKnownToSatisfyTypeContract(
+          tabContent.innerHTML, 'existing innerHTML content'),
       path: tabContent.getAttribute('path') || '',
       region: tabContent.getAttribute('region') || '',
 

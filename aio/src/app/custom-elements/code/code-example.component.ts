@@ -1,6 +1,7 @@
 /* tslint:disable component-selector */
 import { Component, HostBinding, ElementRef, ViewChild, Input, AfterViewInit } from '@angular/core';
 import { CodeComponent } from './code.component';
+import { htmlFromStringKnownToSatisfyTypeContract } from 'safevalues/unsafe/reviewed';
 
 /**
  * An embeddable code block that displays nicely formatted code.
@@ -85,7 +86,8 @@ export class CodeExampleComponent implements AfterViewInit {
 
   ngAfterViewInit() {
     const contentElem = this.content.nativeElement;
-    this.aioCode.code = contentElem.innerHTML;
-    contentElem.innerHTML = '';  // Remove DOM nodes that are no longer needed.
+    this.aioCode.code = htmlFromStringKnownToSatisfyTypeContract(
+        contentElem.innerHTML, 'existing innerHTML content');
+    contentElem.textContent = '';  // Remove DOM nodes that are no longer needed.
   }
 }
