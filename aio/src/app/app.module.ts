@@ -47,6 +47,7 @@ import { SwUpdatesModule } from 'app/sw-updates/sw-updates.module';
 import { environment } from '../environments/environment';
 
 import { svg } from 'app/shared/security';
+import { scriptUrl, unwrapScriptUrlForSink } from 'safevalues';
 
 // These are the hardcoded inline svg sources to be used by the `<mat-icon>` component.
 // tslint:disable: max-line-length
@@ -146,7 +147,10 @@ export const svgIconProviders = [
     MatToolbarModule,
     SwUpdatesModule,
     SharedModule,
-    ServiceWorkerModule.register('/ngsw-worker.js', {enabled: environment.production}),
+    ServiceWorkerModule.register(
+        // Make sure service worker is loaded with a TrustedScriptURL
+        unwrapScriptUrlForSink(scriptUrl`/ngsw-worker.js`),
+        {enabled: environment.production}),
   ],
   declarations: [
     AppComponent,
