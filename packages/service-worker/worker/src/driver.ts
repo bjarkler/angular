@@ -354,7 +354,7 @@ export class Driver implements Debuggable, UpdateSource {
 
     const notificationAction = action === '' || action === undefined ? 'default' : action;
 
-    const onActionClick = notification?.data?.onActionClick[notificationAction];
+    const onActionClick = notification?.data?.onActionClick?.[notificationAction];
 
     const urlToOpen = new URL(onActionClick?.url ?? '', this.scope.registration.scope).href;
 
@@ -672,8 +672,10 @@ export class Driver implements Debuggable, UpdateSource {
           }
 
           const client = await this.scope.clients.get(clientId);
+          if (client) {
+            await this.updateClient(client);
+          }
 
-          await this.updateClient(client);
           appVersion = this.lookupVersionByHash(this.latestHash, 'assignVersion');
         }
 
@@ -1050,7 +1052,9 @@ export class Driver implements Debuggable, UpdateSource {
 
     await Promise.all(affectedClients.map(async clientId => {
       const client = await this.scope.clients.get(clientId);
-      client.postMessage({type: 'UNRECOVERABLE_STATE', reason});
+      if (client) {
+        client.postMessage({type: 'UNRECOVERABLE_STATE', reason});
+      }
     }));
   }
 

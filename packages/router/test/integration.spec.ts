@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {APP_BASE_HREF, CommonModule, Location, LOCATION_INITIALIZED, LocationStrategy, PlatformLocation} from '@angular/common';
+import {APP_BASE_HREF, CommonModule, HashLocationStrategy, Location, LOCATION_INITIALIZED, LocationStrategy, PlatformLocation} from '@angular/common';
 import {SpyLocation} from '@angular/common/testing';
 import {ChangeDetectionStrategy, Component, EventEmitter, Injectable, NgModule, NgModuleFactoryLoader, NgModuleRef, NgZone, OnDestroy, ViewChild, ɵConsole as Console, ɵNoopNgZone as NoopNgZone} from '@angular/core';
 import {ComponentFixture, fakeAsync, inject, TestBed, tick} from '@angular/core/testing';
@@ -18,6 +18,7 @@ import {delay, filter, first, map, mapTo, tap} from 'rxjs/operators';
 
 import {RouterInitializer} from '../src/router_module';
 import {forEach} from '../src/utils/collection';
+import {isUrlTree} from '../src/utils/type_guards';
 import {RouterTestingModule, SpyNgModuleFactoryLoader} from '../testing';
 
 describe('Integration', () => {
@@ -1060,13 +1061,13 @@ describe('Integration', () => {
        location.back();
        advance(fixture);
        expect(location.path()).toEqual('/team/33/simple');
-       expect(event!.navigationTrigger).toEqual('hashchange');
+       expect(event!.navigationTrigger).toEqual('popstate');
        expect(event!.restoredState!.navigationId).toEqual(simpleNavStart.id);
 
        location.forward();
        advance(fixture);
        expect(location.path()).toEqual('/team/22/user/victor');
-       expect(event!.navigationTrigger).toEqual('hashchange');
+       expect(event!.navigationTrigger).toEqual('popstate');
        expect(event!.restoredState!.navigationId).toEqual(userVictorNavStart.id);
      })));
 
@@ -1225,11 +1226,14 @@ describe('Integration', () => {
          const recordedEvents = [] as Event[];
          router.events.forEach(e => onlyNavigationStartAndEnd(e) && recordedEvents.push(e));
 
-         location.simulateUrlPop('/blocked');
          location.simulateHashChange('/blocked');
 
          advance(fixture);
-         expectEvents(recordedEvents, [[NavigationStart, '/blocked']]);
+         expectEvents(recordedEvents, [
+           [NavigationStart, '/blocked'],
+           [NavigationStart, '/simple'],
+           [NavigationEnd, '/simple'],
+         ]);
        }));
   });
 
@@ -2629,8 +2633,11 @@ describe('Integration', () => {
          expect(router.serializeUrl(afterRedirectUrl as any)).toBe('/team/22');
        })));
 
-    it('should not break the back button when trigger by location change',
-       fakeAsync(inject([Router, Location], (router: Router, location: Location) => {
+    it('should not break the back button when trigger by location change', fakeAsync(() => {
+         TestBed.configureTestingModule(
+             {providers: [{provide: LocationStrategy, useClass: HashLocationStrategy}]});
+         const router = TestBed.inject(Router);
+         const location = TestBed.inject(Location) as SpyLocation;
          const fixture = TestBed.createComponent(RootCmp);
          advance(fixture);
          router.resetConfig([
@@ -2651,8 +2658,7 @@ describe('Integration', () => {
          expect(location.path()).toEqual('/initial');
 
          // location change
-         (<any>location).go('/old/team/33');
-
+         location.simulateHashChange('/old/team/33');
 
          advance(fixture);
          expect(location.path()).toEqual('/team/33');
@@ -2660,426 +2666,6 @@ describe('Integration', () => {
          location.back();
          advance(fixture);
          expect(location.path()).toEqual('/initial');
-       })));
-  });
-  describe('`restoredState#ɵrouterPageId`', () => {
-    // TODO: Remove RouterSpyLocation after #38884 is submitted.
-    class RouterSpyLocation implements Location {
-      urlChanges: string[] = [];
-      private _history: LocationState[] = [new LocationState('', '', null)];
-      private _historyIndex: number = 0;
-      /** @internal */
-      _subject: EventEmitter<any> = new EventEmitter();
-      /** @internal */
-      _baseHref: string = '';
-      /** @internal */
-      _platformStrategy: LocationStrategy = null!;
-      /** @internal */
-      _platformLocation: PlatformLocation = null!;
-      /** @internal */
-      _urlChangeListeners: ((url: string, state: unknown) => void)[] = [];
-      /** @internal */
-      _urlChangeSubscription?: SubscriptionLike;
-
-      setInitialPath(url: string) {
-        this._history[this._historyIndex].path = url;
-      }
-
-      setBaseHref(url: string) {
-        this._baseHref = url;
-      }
-
-      path(): string {
-        return this._history[this._historyIndex].path;
-      }
-
-      getState(): unknown {
-        return this._history[this._historyIndex].state;
-      }
-
-      isCurrentPathEqualTo(path: string, query: string = ''): boolean {
-        const givenPath = path.endsWith('/') ? path.substring(0, path.length - 1) : path;
-        const currPath = this.path().endsWith('/') ?
-            this.path().substring(0, this.path().length - 1) :
-            this.path();
-
-        return currPath == givenPath + (query.length > 0 ? ('?' + query) : '');
-      }
-
-      simulateUrlPop(pathname: string) {
-        this._subject.emit({'url': pathname, 'pop': true, 'type': 'popstate'});
-      }
-
-      simulateHashChange(pathname: string) {
-        // Because we don't prevent the native event, the browser will independently update the path
-        this.setInitialPath(pathname);
-        this.urlChanges.push('hash: ' + pathname);
-        this._subject.emit({'url': pathname, 'pop': true, 'type': 'hashchange'});
-      }
-
-      prepareExternalUrl(url: string): string {
-        if (url.length > 0 && !url.startsWith('/')) {
-          url = '/' + url;
-        }
-        return this._baseHref + url;
-      }
-
-      go(path: string, query: string = '', state: any = null) {
-        path = this.prepareExternalUrl(path);
-
-        if (this._historyIndex > 0) {
-          this._history.splice(this._historyIndex + 1);
-        }
-        this._history.push(new LocationState(path, query, state));
-        this._historyIndex = this._history.length - 1;
-
-        const locationState = this._history[this._historyIndex - 1];
-        if (locationState.path == path && locationState.query == query) {
-          return;
-        }
-
-        const url = path + (query.length > 0 ? ('?' + query) : '');
-        this.urlChanges.push(url);
-        this._subject.emit({'url': url, 'pop': false});
-      }
-
-      replaceState(path: string, query: string = '', state: any = null) {
-        path = this.prepareExternalUrl(path);
-
-        const history = this._history[this._historyIndex];
-        if (history.path == path && history.query == query) {
-          return;
-        }
-
-        history.path = path;
-        history.query = query;
-        history.state = state;
-
-        const url = path + (query.length > 0 ? ('?' + query) : '');
-        this.urlChanges.push('replace: ' + url);
-      }
-
-      forward() {
-        if (this._historyIndex < (this._history.length - 1)) {
-          this._historyIndex++;
-          this._subject.emit(
-              {'url': this.path(), 'state': this.getState(), 'pop': true, 'type': 'popstate'});
-        }
-      }
-
-      back() {
-        if (this._historyIndex > 0) {
-          this._historyIndex--;
-          this._subject.emit(
-              {'url': this.path(), 'state': this.getState(), 'pop': true, 'type': 'popstate'});
-        }
-      }
-
-      historyGo(relativePosition: number = 0): void {
-        const nextPageIndex = this._historyIndex + relativePosition;
-        if (nextPageIndex >= 0 && nextPageIndex < this._history.length) {
-          this._historyIndex = nextPageIndex;
-          this._subject.emit(
-              {'url': this.path(), 'state': this.getState(), 'pop': true, 'type': 'popstate'});
-        }
-      }
-
-      onUrlChange(fn: (url: string, state: unknown) => void) {
-        this._urlChangeListeners.push(fn);
-
-        if (!this._urlChangeSubscription) {
-          this._urlChangeSubscription = this.subscribe(v => {
-            this._notifyUrlChangeListeners(v.url, v.state);
-          });
-        }
-      }
-
-      /** @internal */
-      _notifyUrlChangeListeners(url: string = '', state: unknown) {
-        this._urlChangeListeners.forEach(fn => fn(url, state));
-      }
-
-      subscribe(
-          onNext: (value: any) => void, onThrow?: ((error: any) => void)|null,
-          onReturn?: (() => void)|null): SubscriptionLike {
-        return this._subject.subscribe({next: onNext, error: onThrow, complete: onReturn});
-      }
-
-      normalize(url: string): string {
-        return null!;
-      }
-    }
-
-    class LocationState {
-      constructor(public path: string, public query: string, public state: any) {}
-    }
-
-    @Injectable({providedIn: 'root'})
-    class MyCanDeactivateGuard implements CanDeactivate<any> {
-      allow: boolean = true;
-      canDeactivate(): boolean {
-        return this.allow;
-      }
-    }
-
-    @Injectable({providedIn: 'root'})
-    class MyCanActivateGuard implements CanActivate {
-      allow: boolean = true;
-      canActivate(): boolean {
-        return this.allow;
-      }
-    }
-    @Injectable({providedIn: 'root'})
-    class MyResolve implements Resolve<Observable<any>> {
-      myresolve: Observable<any> = of(2);
-      resolve(): Observable<any> {
-        return this.myresolve;
-      }
-    }
-
-    @NgModule(
-        {imports: [RouterModule.forChild([{path: '', component: BlankCmp}])]},
-        )
-    class LoadedModule {
-    }
-
-    let fixture: ComponentFixture<unknown>;
-
-    beforeEach(fakeAsync(() => {
-      TestBed.configureTestingModule({
-        imports: [TestModule],
-        providers: [
-          {provide: 'alwaysFalse', useValue: (a: any) => false},
-          {provide: Location, useClass: RouterSpyLocation}
-        ]
-      });
-      const router = TestBed.inject(Router);
-      (router as any).canceledNavigationResolution = 'computed';
-      const location = TestBed.inject(Location);
-      fixture = createRoot(router, SimpleCmp);
-      router.resetConfig([
-        {
-          path: 'first',
-          component: SimpleCmp,
-          canDeactivate: [MyCanDeactivateGuard],
-          canActivate: [MyCanActivateGuard],
-          resolve: [MyResolve]
-        },
-        {
-          path: 'second',
-          component: SimpleCmp,
-          canDeactivate: [MyCanDeactivateGuard],
-          canActivate: [MyCanActivateGuard],
-          resolve: [MyResolve]
-        },
-        {
-          path: 'third',
-          component: SimpleCmp,
-          canDeactivate: [MyCanDeactivateGuard],
-          canActivate: [MyCanActivateGuard],
-          resolve: [MyResolve]
-        },
-        {path: 'loaded', loadChildren: () => of(LoadedModule), canLoad: ['alwaysFalse']}
-      ]);
-      router.navigateByUrl('/first');
-      advance(fixture);
-
-      router.navigateByUrl('/second');
-      advance(fixture);
-
-      router.navigateByUrl('/third');
-      advance(fixture);
-
-      location.back();
-      advance(fixture);
-    }));
-
-    it('should work when CanActivate returns false', fakeAsync(() => {
-         const location = TestBed.inject(Location);
-         const router = TestBed.inject(Router);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         TestBed.inject(MyCanActivateGuard).allow = false;
-         location.back();
-         advance(fixture);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         TestBed.inject(MyCanActivateGuard).allow = true;
-         location.back();
-         advance(fixture);
-         expect(location.path()).toEqual('/first');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 2}));
-
-         TestBed.inject(MyCanActivateGuard).allow = false;
-         location.forward();
-         advance(fixture);
-         expect(location.path()).toEqual('/first');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 2}));
-
-         router.navigateByUrl('/second');
-         advance(fixture);
-         expect(location.path()).toEqual('/first');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 2}));
-       }));
-
-
-    it('should work when CanDeactivate returns false', fakeAsync(() => {
-         const location = TestBed.inject(Location);
-         const router = TestBed.inject(Router);
-
-         TestBed.inject(MyCanDeactivateGuard).allow = false;
-         location.back();
-         advance(fixture);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         location.forward();
-         advance(fixture);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         router.navigateByUrl('third');
-         advance(fixture);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-
-         TestBed.inject(MyCanDeactivateGuard).allow = true;
-         location.forward();
-         advance(fixture);
-         expect(location.path()).toEqual('/third');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 4}));
-       }));
-
-    it('should work when using `NavigationExtras.skipLocationChange`', fakeAsync(() => {
-         const location = TestBed.inject(Location);
-         const router = TestBed.inject(Router);
-
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         router.navigateByUrl('/first', {skipLocationChange: true});
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         router.navigateByUrl('/third');
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 4}));
-
-         location.back();
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-       }));
-
-    it('should work when using `NavigationExtras.replaceUrl`', fakeAsync(() => {
-         const location = TestBed.inject(Location);
-         const router = TestBed.inject(Router);
-
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         router.navigateByUrl('/first', {replaceUrl: true});
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-         expect(location.path()).toEqual('/first');
-       }));
-
-    it('should work when CanLoad returns false', fakeAsync(() => {
-         const location = TestBed.inject(Location);
-         const router = TestBed.inject(Router);
-
-         router.navigateByUrl('/loaded');
-         advance(fixture);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-       }));
-
-    it('should work when resolve empty', fakeAsync(() => {
-         const location = TestBed.inject(Location);
-         const router = TestBed.inject(Router);
-
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         TestBed.inject(MyResolve).myresolve = EMPTY;
-
-         location.back();
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-         expect(location.path()).toEqual('/second');
-
-         TestBed.inject(MyResolve).myresolve = of(2);
-
-         location.back();
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 2}));
-         expect(location.path()).toEqual('/first');
-
-         TestBed.inject(MyResolve).myresolve = EMPTY;
-
-         // We should cancel the navigation to `/third` when myresolve is empty
-         router.navigateByUrl('/third');
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 2}));
-         expect(location.path()).toEqual('/first');
-
-         location.historyGo(2);
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 2}));
-         expect(location.path()).toEqual('/first');
-
-         TestBed.inject(MyResolve).myresolve = of(2);
-         location.historyGo(2);
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 4}));
-         expect(location.path()).toEqual('/third');
-
-         TestBed.inject(MyResolve).myresolve = EMPTY;
-         location.historyGo(-2);
-         advance(fixture);
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 4}));
-         expect(location.path()).toEqual('/third');
-       }));
-
-
-    it('should work when an error occured during navigation', fakeAsync(() => {
-         const location = TestBed.inject(Location);
-         const router = TestBed.inject(Router);
-
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-
-         router.navigateByUrl('/invalid').catch(() => null);
-         advance(fixture);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         location.back();
-         advance(fixture);
-         expect(location.path()).toEqual('/first');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 2}));
-       }));
-
-    it('should work when urlUpdateStrategy="eagar"', fakeAsync(() => {
-         const location = TestBed.inject(Location) as SpyLocation;
-         const router = TestBed.inject(Router);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-         router.urlUpdateStrategy = 'eager';
-
-         TestBed.inject(MyCanActivateGuard).allow = false;
-         router.navigateByUrl('/first');
-         advance(fixture);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
-
-         location.back();
-         advance(fixture);
-         expect(location.path()).toEqual('/second');
-         expect(location.getState()).toEqual(jasmine.objectContaining({ɵrouterPageId: 3}));
        }));
   });
   describe('guards', () => {
@@ -3250,16 +2836,20 @@ describe('Integration', () => {
       describe('should reset the location when cancelling a navigation', () => {
         beforeEach(() => {
           TestBed.configureTestingModule({
-            providers: [{
-              provide: 'alwaysFalse',
-              useValue: (a: ActivatedRouteSnapshot, b: RouterStateSnapshot) => {
-                return false;
-              }
-            }]
+            providers: [
+              {
+                provide: 'alwaysFalse',
+                useValue: (a: ActivatedRouteSnapshot, b: RouterStateSnapshot) => {
+                  return false;
+                }
+              },
+              {provide: LocationStrategy, useClass: HashLocationStrategy}
+            ]
           });
         });
 
-        it('works', fakeAsync(inject([Router, Location], (router: Router, location: Location) => {
+        it('works',
+           fakeAsync(inject([Router, Location], (router: Router, location: SpyLocation) => {
              const fixture = createRoot(router, RootCmp);
 
              router.resetConfig([
@@ -3271,7 +2861,7 @@ describe('Integration', () => {
              advance(fixture);
              expect(location.path()).toEqual('/one');
 
-             location.go('/two');
+             location.simulateHashChange('/two');
              advance(fixture);
              expect(location.path()).toEqual('/one');
            })));
@@ -5077,6 +4667,44 @@ describe('Integration', () => {
          fixture.detectChanges(false /** checkNoChanges */);
          expect(TestBed.inject(NgZone).hasPendingMicrotasks).toBe(false);
        }));
+
+    it('should emit on isActiveChange output when link is activated or inactivated',
+       fakeAsync(inject([Router, Location], (router: Router, location: Location) => {
+         const fixture = createRoot(router, RootCmp);
+
+         router.resetConfig([{
+           path: 'team/:id',
+           component: TeamCmp,
+           children: [{
+             path: 'link',
+             component: DummyLinkCmp,
+             children: [{path: 'simple', component: SimpleCmp}, {path: '', component: BlankCmp}]
+           }]
+         }]);
+
+         router.navigateByUrl('/team/22/link;exact=true');
+         advance(fixture);
+         advance(fixture);
+         expect(location.path()).toEqual('/team/22/link;exact=true');
+
+         const linkComponent =
+             fixture.debugElement.query(By.directive(DummyLinkCmp)).componentInstance as
+             DummyLinkCmp;
+
+         expect(linkComponent.isLinkActivated).toEqual(true);
+         const nativeLink = fixture.nativeElement.querySelector('a');
+         const nativeButton = fixture.nativeElement.querySelector('button');
+         expect(nativeLink.className).toEqual('active');
+         expect(nativeButton.className).toEqual('active');
+
+
+         router.navigateByUrl('/team/22/link/simple');
+         advance(fixture);
+         expect(location.path()).toEqual('/team/22/link/simple');
+         expect(linkComponent.isLinkActivated).toEqual(false);
+         expect(nativeLink.className).toEqual('');
+         expect(nativeButton.className).toEqual('');
+       })));
   });
 
   describe('lazy loading', () => {
@@ -5808,12 +5436,16 @@ describe('Integration', () => {
       }
 
       beforeEach(() => {
-        TestBed.configureTestingModule(
-            {providers: [{provide: UrlHandlingStrategy, useClass: CustomUrlHandlingStrategy}]});
+        TestBed.configureTestingModule({
+          providers: [
+            {provide: UrlHandlingStrategy, useClass: CustomUrlHandlingStrategy},
+            {provide: LocationStrategy, useClass: HashLocationStrategy}
+          ]
+        });
       });
 
       it('should work',
-         fakeAsync(inject([Router, Location], (router: Router, location: Location) => {
+         fakeAsync(inject([Router, Location], (router: Router, location: SpyLocation) => {
            const fixture = createRoot(router, RootCmp);
 
            router.resetConfig([{
@@ -5854,14 +5486,14 @@ describe('Integration', () => {
            events.splice(0);
 
            // another unsupported URL
-           location.go('/exclude/two');
+           location.simulateHashChange('/exclude/two');
            advance(fixture);
 
            expect(location.path()).toEqual('/exclude/two');
            expectEvents(events, []);
 
            // back to a supported URL
-           location.go('/include/simple');
+           location.simulateHashChange('/include/simple');
            advance(fixture);
 
            expect(location.path()).toEqual('/include/simple');
@@ -5876,7 +5508,7 @@ describe('Integration', () => {
          })));
 
       it('should handle the case when the router takes only the primary url',
-         fakeAsync(inject([Router, Location], (router: Router, location: Location) => {
+         fakeAsync(inject([Router, Location], (router: Router, location: SpyLocation) => {
            const fixture = createRoot(router, RootCmp);
 
            router.resetConfig([{
@@ -5889,7 +5521,7 @@ describe('Integration', () => {
            const events: any[] = [];
            router.events.subscribe(e => e instanceof RouterEvent && events.push(e));
 
-           location.go('/include/user/kate(aux:excluded)');
+           location.simulateHashChange('/include/user/kate(aux:excluded)');
            advance(fixture);
 
            expect(location.path()).toEqual('/include/user/kate(aux:excluded)');
@@ -5901,7 +5533,7 @@ describe('Integration', () => {
            ]);
            events.splice(0);
 
-           location.go('/include/user/kate(aux:excluded2)');
+           location.simulateHashChange('/include/user/kate(aux:excluded2)');
            advance(fixture);
            expectEvents(events, []);
 
@@ -6065,6 +5697,17 @@ describe('Integration', () => {
         return Object.keys(future.params).every(k => future.params[k] === curr.params[k]);
       }
     }
+
+    it('should be injectable', () => {
+      TestBed.configureTestingModule({
+        imports: [RouterTestingModule],
+        providers: [{provide: RouteReuseStrategy, useClass: AttachDetachReuseStrategy}]
+      });
+
+      const router = TestBed.inject(Router);
+
+      expect(router.routeReuseStrategy).toBeInstanceOf(AttachDetachReuseStrategy);
+    });
 
     it('should support attaching & detaching fragments',
        fakeAsync(inject([Router, Location], (router: Router, location: Location) => {
@@ -6332,14 +5975,20 @@ class AbsoluteLinkCmp {
 @Component({
   selector: 'link-cmp',
   template:
-      `<router-outlet></router-outlet><a routerLinkActive="active" [routerLinkActiveOptions]="{exact: exact}" [routerLink]="['./']">link</a>
+      `<router-outlet></router-outlet><a routerLinkActive="active" (isActiveChange)="this.onRouterLinkActivated($event)" [routerLinkActiveOptions]="{exact: exact}" [routerLink]="['./']">link</a>
  <button routerLinkActive="active" [routerLinkActiveOptions]="{exact: exact}" [routerLink]="['./']">button</button>
  `
 })
 class DummyLinkCmp {
   private exact: boolean;
+  public isLinkActivated?: boolean;
+
   constructor(route: ActivatedRoute) {
     this.exact = route.snapshot.paramMap.get('exact') === 'true';
+  }
+
+  public onRouterLinkActivated(isActive: boolean): void {
+    this.isLinkActivated = isActive;
   }
 }
 

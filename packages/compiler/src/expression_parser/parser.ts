@@ -10,7 +10,7 @@ import * as chars from '../chars';
 import {DEFAULT_INTERPOLATION_CONFIG, InterpolationConfig} from '../ml_parser/interpolation_config';
 
 import {AbsoluteSourceSpan, AST, AstVisitor, ASTWithSource, Binary, BindingPipe, Chain, Conditional, EmptyExpr, ExpressionBinding, FunctionCall, ImplicitReceiver, Interpolation, KeyedRead, KeyedWrite, LiteralArray, LiteralMap, LiteralMapKey, LiteralPrimitive, MethodCall, NonNullAssert, ParserError, ParseSpan, PrefixNot, PropertyRead, PropertyWrite, Quote, RecursiveAstVisitor, SafeKeyedRead, SafeMethodCall, SafePropertyRead, TemplateBinding, TemplateBindingIdentifier, ThisReceiver, Unary, VariableBinding} from './ast';
-import {EOF, isIdentifier, isQuote, Lexer, Token, TokenType} from './lexer';
+import {EOF, isIdentifier, Lexer, Token, TokenType} from './lexer';
 
 export interface InterpolationPiece {
   text: string;
@@ -291,7 +291,7 @@ export class Parser {
 
       if (outerQuote === char) {
         outerQuote = null;
-      } else if (outerQuote == null && isQuote(char)) {
+      } else if (outerQuote == null && chars.isQuote(char)) {
         outerQuote = char;
       }
     }
@@ -355,7 +355,7 @@ export class Parser {
       const char = input[i];
       // Skip the characters inside quotes. Note that we only care about the outer-most
       // quotes matching up and we need to account for escape characters.
-      if (isQuote(input.charCodeAt(i)) && (currentQuote === null || currentQuote === char) &&
+      if (chars.isQuote(input.charCodeAt(i)) && (currentQuote === null || currentQuote === char) &&
           escapeCount % 2 === 0) {
         currentQuote = currentQuote === null ? char : null;
       } else if (currentQuote === null) {
@@ -367,7 +367,7 @@ export class Parser {
 }
 
 export class IvyParser extends Parser {
-  simpleExpressionChecker = IvySimpleExpressionChecker;
+  override simpleExpressionChecker = IvySimpleExpressionChecker;
 }
 
 /** Describes a stateful context an expression parser is in. */
@@ -1371,7 +1371,7 @@ class SimpleExpressionChecker implements AstVisitor {
 class IvySimpleExpressionChecker extends RecursiveAstVisitor implements SimpleExpressionChecker {
   errors: string[] = [];
 
-  visitPipe() {
+  override visitPipe() {
     this.errors.push('pipes');
   }
 }

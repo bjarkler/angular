@@ -13,7 +13,7 @@ import {isNamedClassDeclaration, TypeScriptReflectionHost} from '../../reflectio
 import {getDeclaration, makeProgram} from '../../testing';
 import {TypeParameterEmitter} from '../src/type_parameter_emitter';
 
-import {angularCoreDts} from './test_utils';
+import {angularCoreDts} from '../testing';
 
 
 runInEachFileSystem(() => {
@@ -84,6 +84,28 @@ runInEachFileSystem(() => {
           .toEqual('<T extends string & boolean>');
       expect(emit(createEmitter(`export class TestClass<T extends { [key: string]: boolean }> {}`)))
           .toEqual('<T extends {\n    [key: string]: boolean;\n}>');
+    });
+
+    it('can emit literal types', () => {
+      expect(emit(createEmitter(`export class TestClass<T extends 'a"a'> {}`)))
+          .toEqual(`<T extends "a\\"a">`);
+      expect(emit(createEmitter(`export class TestClass<T extends "b\\\"b"> {}`)))
+          .toEqual(`<T extends "b\\"b">`);
+      expect(emit(createEmitter(`export class TestClass<T extends \`c\\\`c\`> {}`)))
+          .toEqual(`<T extends \`c\\\`c\`>`);
+      expect(emit(createEmitter(`export class TestClass<T extends -1> {}`)))
+          .toEqual(`<T extends -1>`);
+      expect(emit(createEmitter(`export class TestClass<T extends 1> {}`)))
+          .toEqual(`<T extends 1>`);
+      expect(emit(createEmitter(`export class TestClass<T extends 1n> {}`)))
+          .toEqual(`<T extends 1n>`);
+    });
+
+    it('cannot emit import types', () => {
+      const emitter = createEmitter(`export class TestClass<T extends import('module')> {}`);
+
+      expect(emitter.canEmit()).toBe(false);
+      expect(() => emit(emitter)).toThrowError('Unable to emit import type');
     });
 
     it('can emit references into external modules', () => {

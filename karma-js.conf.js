@@ -36,8 +36,8 @@ module.exports = function(config) {
       {pattern: 'node_modules/angular-mocks-1.6/angular-mocks.js', included: false, watched: false},
       {pattern: 'node_modules/angular-1.7/angular?(.min).js', included: false, watched: false},
       {pattern: 'node_modules/angular-mocks-1.7/angular-mocks.js', included: false, watched: false},
-      {pattern: 'node_modules/angular/angular?(.min).js', included: false, watched: false},
-      {pattern: 'node_modules/angular-mocks/angular-mocks.js', included: false, watched: false},
+      {pattern: 'node_modules/angular-1.8/angular?(.min).js', included: false, watched: false},
+      {pattern: 'node_modules/angular-mocks-1.8/angular-mocks.js', included: false, watched: false},
 
       'node_modules/core-js-bundle/index.js',
       'node_modules/jasmine-ajax/lib/mock-ajax.js',
@@ -50,7 +50,7 @@ module.exports = function(config) {
 
       // Including systemjs because it defines `__eval`, which produces correct stack traces.
       'test-events.js',
-      'third_party/shims_for_IE.js',
+      'third_party/shims_for_internal_tests.js',
       'node_modules/systemjs/dist/system.src.js',
 
       // Serve polyfills necessary for testing the `elements` package.

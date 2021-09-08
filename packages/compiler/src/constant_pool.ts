@@ -7,7 +7,6 @@
  */
 
 import * as o from './output/output_ast';
-import {error, OutputContext} from './util';
 
 const CONSTANT_PREFIX = '_c';
 
@@ -62,7 +61,7 @@ class FixupExpression extends o.Expression {
     this.original = resolved;
   }
 
-  visitExpression(visitor: o.ExpressionVisitor, context: any): any {
+  override visitExpression(visitor: o.ExpressionVisitor, context: any): any {
     if (context === KEY_CONTEXT) {
       // When producing a key we want to traverse the constant not the
       // variable used to refer to it.
@@ -72,11 +71,11 @@ class FixupExpression extends o.Expression {
     }
   }
 
-  isEquivalent(e: o.Expression): boolean {
+  override isEquivalent(e: o.Expression): boolean {
     return e instanceof FixupExpression && this.resolved.isEquivalent(e.resolved);
   }
 
-  isConstant() {
+  override isConstant() {
     return true;
   }
 
@@ -274,6 +273,13 @@ export class ConstantPool {
   private keyOf(expression: o.Expression) {
     return expression.visitExpression(new KeyVisitor(), KEY_CONTEXT);
   }
+}
+
+export interface OutputContext {
+  genFilePath: string;
+  statements: o.Statement[];
+  constantPool: ConstantPool;
+  importExpr(reference: any, typeParams?: o.Type[]|null, useSummaries?: boolean): o.Expression;
 }
 
 /**

@@ -30,11 +30,13 @@ import {ivySwitchTransform} from '../../switch';
 import {aliasTransformFactory, CompilationMode, declarationTransformFactory, DecoratorHandler, DtsTransformRegistry, ivyTransformFactory, TraitCompiler} from '../../transform';
 import {TemplateTypeCheckerImpl} from '../../typecheck';
 import {OptimizeFor, TemplateTypeChecker, TypeCheckingConfig} from '../../typecheck/api';
+import {ExtendedTemplateCheckerImpl} from '../../typecheck/extended';
+import {ExtendedTemplateChecker, TemplateCheck} from '../../typecheck/extended/api';
+import {InvalidBananaInBoxCheck} from '../../typecheck/extended/checks/invalid_banana_in_box';
+import {NullishCoalescingNotNullableCheck} from '../../typecheck/extended/checks/nullish_coalescing_not_nullable';
 import {getSourceFileOrNull, isDtsPath, resolveModuleName, toUnredirectedSourceFile} from '../../util/src/typescript';
 import {Xi18nContext} from '../../xi18n';
 import {LazyRoute, NgCompilerAdapter, NgCompilerOptions} from '../api';
-
-import {compileUndecoratedClassesWithAngularFeatures} from './config';
 
 /**
  * State information about a compilation which is only generated once some data is requested from
@@ -54,6 +56,7 @@ interface LazyCompilationState {
   refEmitter: ReferenceEmitter;
   templateTypeChecker: TemplateTypeChecker;
   resourceRegistry: ResourceRegistry;
+  extendedTemplateChecker: ExtendedTemplateChecker;
 }
 
 
@@ -318,6 +321,12 @@ export class NgCompiler {
       readonly usePoisonedData: boolean,
       private livePerfRecorder: ActivePerfRecorder,
   ) {
+    if (this.options._extendedTemplateDiagnostics === true &&
+        this.options.strictTemplates === false) {
+      throw new Error(
+          'The \'_extendedTemplateDiagnostics\' option requires \'strictTemplates\' to also be enabled.');
+    }
+
     this.constructionDiagnostics.push(...this.adapter.constructionDiagnostics);
     const incompatibleTypeCheckOptionsDiagnostic = verifyCompatibleTypeCheckOptions(this.options);
     if (incompatibleTypeCheckOptionsDiagnostic !== null) {
@@ -427,8 +436,12 @@ export class NgCompiler {
    * Get all Angular-related diagnostics for this compilation.
    */
   getDiagnostics(): ts.Diagnostic[] {
-    return this.addMessageTextDetails(
-        [...this.getNonTemplateDiagnostics(), ...this.getTemplateDiagnostics()]);
+    const diagnostics: ts.Diagnostic[] = [];
+    diagnostics.push(...this.getNonTemplateDiagnostics(), ...this.getTemplateDiagnostics());
+    if (this.options._extendedTemplateDiagnostics) {
+      diagnostics.push(...this.getExtendedTemplateDiagnostics());
+    }
+    return this.addMessageTextDetails(diagnostics);
   }
 
   /**
@@ -437,10 +450,29 @@ export class NgCompiler {
    * If a `ts.SourceFile` is passed, only diagnostics related to that file are returned.
    */
   getDiagnosticsForFile(file: ts.SourceFile, optimizeFor: OptimizeFor): ts.Diagnostic[] {
-    return this.addMessageTextDetails([
-      ...this.getNonTemplateDiagnostics().filter(diag => diag.file === file),
-      ...this.getTemplateDiagnosticsForFile(file, optimizeFor)
-    ]);
+    const diagnostics: ts.Diagnostic[] = [];
+    diagnostics.push(
+        ...this.getNonTemplateDiagnostics().filter(diag => diag.file === file),
+        ...this.getTemplateDiagnosticsForFile(file, optimizeFor));
+    if (this.options._extendedTemplateDiagnostics) {
+      diagnostics.push(...this.getExtendedTemplateDiagnostics(file));
+    }
+    return this.addMessageTextDetails(diagnostics);
+  }
+
+  /**
+   * Get all `ts.Diagnostic`s currently available that pertain to the given component.
+   */
+  getDiagnosticsForComponent(component: ts.ClassDeclaration): ts.Diagnostic[] {
+    const compilation = this.ensureAnalyzed();
+    const ttc = compilation.templateTypeChecker;
+    const diagnostics: ts.Diagnostic[] = [];
+    diagnostics.push(...ttc.getDiagnosticsForComponent(component));
+    if (this.options._extendedTemplateDiagnostics) {
+      const extendedTemplateChecker = compilation.extendedTemplateChecker;
+      diagnostics.push(...extendedTemplateChecker.getDiagnosticsForComponent(component));
+    }
+    return this.addMessageTextDetails(diagnostics);
   }
 
   /**
@@ -894,6 +926,27 @@ export class NgCompiler {
     return this.nonTemplateDiagnostics;
   }
 
+  /**
+   * Calls the `extendedTemplateCheck` phase of the trait compiler
+   * @param sf optional parameter to get diagnostics for a certain file
+   *     or all files in the program if `sf` is undefined
+   * @returns generated extended template diagnostics
+   */
+  private getExtendedTemplateDiagnostics(sf?: ts.SourceFile): ts.Diagnostic[] {
+    const diagnostics: ts.Diagnostic[] = [];
+    const compilation = this.ensureAnalyzed();
+    const extendedTemplateChecker = compilation.extendedTemplateChecker;
+    if (sf !== undefined) {
+      return compilation.traitCompiler.extendedTemplateCheck(sf, extendedTemplateChecker);
+    }
+    for (const sf of this.inputProgram.getSourceFiles()) {
+      diagnostics.push(
+          ...compilation.traitCompiler.extendedTemplateCheck(sf, extendedTemplateChecker));
+    }
+
+    return diagnostics;
+  }
+
   private makeCompilation(): LazyCompilationState {
     const checker = this.inputProgram.getTypeChecker();
 
@@ -1021,7 +1074,7 @@ export class NgCompiler {
         new DirectiveDecoratorHandler(
             reflector, evaluator, metaRegistry, scopeRegistry, metaReader,
             injectableRegistry, isCore, semanticDepGraphUpdater,
-          this.closureCompilerEnabled, compileUndecoratedClassesWithAngularFeatures,
+          this.closureCompilerEnabled, /** compileUndecoratedClassesWithAngularFeatures */ false,
           this.delegatingPerfRecorder,
         ) as Readonly<DecoratorHandler<unknown, unknown, SemanticSymbol | null,unknown>>,
       // clang-format on
@@ -1057,6 +1110,13 @@ export class NgCompiler {
         reflector, this.adapter, this.incrementalCompilation, scopeRegistry, typeCheckScopeRegistry,
         this.delegatingPerfRecorder);
 
+    const templateChecks: TemplateCheck<ErrorCode>[] = [new InvalidBananaInBoxCheck()];
+    if (this.options.strictNullChecks) {
+      templateChecks.push(new NullishCoalescingNotNullableCheck());
+    }
+    const extendedTemplateChecker =
+        new ExtendedTemplateCheckerImpl(templateTypeChecker, checker, templateChecks);
+
     return {
       isCore,
       traitCompiler,
@@ -1071,6 +1131,7 @@ export class NgCompiler {
       refEmitter,
       templateTypeChecker,
       resourceRegistry,
+      extendedTemplateChecker
     };
   }
 }

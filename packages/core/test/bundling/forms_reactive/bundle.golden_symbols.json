@@ -666,6 +666,9 @@
     "name": "addToViewTree"
   },
   {
+    "name": "addValidators"
+  },
+  {
     "name": "allocExpando"
   },
   {
@@ -951,9 +954,6 @@
     "name": "getDOM"
   },
   {
-    "name": "getDebugContext"
-  },
-  {
     "name": "getDeclarationTNode"
   },
   {
@@ -1084,6 +1084,9 @@
   },
   {
     "name": "hasValidLength"
+  },
+  {
+    "name": "hasValidator"
   },
   {
     "name": "hostReportError"
@@ -1275,6 +1278,9 @@
     "name": "makeRecord"
   },
   {
+    "name": "makeValidatorsArray"
+  },
+  {
     "name": "map"
   },
   {
@@ -1432,6 +1438,9 @@
   },
   {
     "name": "removeStyle"
+  },
+  {
+    "name": "removeValidators"
   },
   {
     "name": "renderComponent"

@@ -116,6 +116,19 @@ const SOME_PIPE = {
    `
 };
 
+const UNION_TYPE_PIPE = {
+  'UnionTypePipe': `
+    @Pipe({
+      name: 'unionTypePipe',
+    })
+    export class UnionTypePipe {
+      transform(value: string, config: 'foo' | 'bar'): string {
+        return value;
+      }
+    }
+   `
+};
+
 describe('completions', () => {
   beforeEach(() => {
     initMockFileSystem('Native');
@@ -220,6 +233,18 @@ describe('completions', () => {
        () => {
          const {templateFile} = setup(`<input dir [myInput]="">`, '', DIR_WITH_UNION_TYPE_INPUT);
          templateFile.moveCursorToText('dir [myInput]="¦">');
+
+         const completions = templateFile.getCompletionsAtPosition();
+         expectContain(completions, ts.ScriptElementKind.string, [`'foo'`, '42']);
+         expectContain(completions, ts.ScriptElementKind.keyword, ['null']);
+         expectContain(completions, ts.ScriptElementKind.variableElement, ['undefined']);
+         expectDoesNotContain(completions, ts.ScriptElementKind.parameterElement, ['ctx']);
+       });
+
+    it('should return completions of string literals, number literals, `true`, `false`, `null` and `undefined` when the user tries to modify the symbol',
+       () => {
+         const {templateFile} = setup(`<input dir [myInput]="a">`, '', DIR_WITH_UNION_TYPE_INPUT);
+         templateFile.moveCursorToText('dir [myInput]="a¦">');
 
          const completions = templateFile.getCompletionsAtPosition();
          expectContain(completions, ts.ScriptElementKind.string, [`'foo'`, '42']);
@@ -749,7 +774,95 @@ describe('completions', () => {
       expect(completions?.entries.length).toBe(0);
     });
   });
+
+  describe('literal primitive scope', () => {
+    it('should complete a string union types in square brackets binding', () => {
+      const {templateFile} = setup(`<input dir [myInput]="'foo'">`, '', DIR_WITH_UNION_TYPE_INPUT);
+      templateFile.moveCursorToText(`[myInput]="'foo¦'"`);
+      const completions = templateFile.getCompletionsAtPosition();
+      expectContain(completions, ts.ScriptElementKind.string, ['foo']);
+      expectReplacementText(completions, templateFile.contents, 'foo');
+    });
+
+    it('should complete a string union types in binding without brackets', () => {
+      const {templateFile} = setup(`<input dir myInput="foo">`, '', DIR_WITH_UNION_TYPE_INPUT);
+      templateFile.moveCursorToText('myInput="foo¦"');
+      const completions = templateFile.getCompletionsAtPosition();
+      expectContain(completions, ts.ScriptElementKind.string, ['foo']);
+      expectReplacementText(completions, templateFile.contents, 'foo');
+    });
+
+    it('should complete a string union types in binding without brackets when the cursor at the start of the string',
+       () => {
+         const {templateFile} = setup(`<input dir myInput="foo">`, '', DIR_WITH_UNION_TYPE_INPUT);
+         templateFile.moveCursorToText('myInput="¦foo"');
+         const completions = templateFile.getCompletionsAtPosition();
+         expectContain(completions, ts.ScriptElementKind.string, ['foo']);
+         expectReplacementText(completions, templateFile.contents, 'foo');
+       });
+
+    it('should complete a string union types in pipe', () => {
+      const {templateFile} =
+          setup(`<input dir [myInput]="'foo'|unionTypePipe:'bar'">`, '', UNION_TYPE_PIPE);
+      templateFile.moveCursorToText(`[myInput]="'foo'|unionTypePipe:'bar¦'"`);
+      const completions = templateFile.getCompletionsAtPosition();
+      expectContain(completions, ts.ScriptElementKind.string, ['bar']);
+      expectReplacementText(completions, templateFile.contents, 'bar');
+    });
+
+    it('should complete a number union types', () => {
+      const {templateFile} = setup(`<input dir [myInput]="42">`, '', DIR_WITH_UNION_TYPE_INPUT);
+      templateFile.moveCursorToText(`[myInput]="42¦"`);
+      const completions = templateFile.getCompletionsAtPosition();
+      expectContain(completions, ts.ScriptElementKind.string, ['42']);
+      expectReplacementText(completions, templateFile.contents, '42');
+    });
+  });
+
+  describe('auto-apply optional chaining', () => {
+    it('should be able to complete on nullable symbol', () => {
+      const {templateFile} = setup('{{article.title}}', `article?: { title: string };`);
+      templateFile.moveCursorToText('{{article.title¦}}');
+      const completions = templateFile.getCompletionsAtPosition({
+        includeCompletionsWithInsertText: true,
+        includeAutomaticOptionalChainCompletions: true,
+      });
+      expectContainInsertText(completions, ts.ScriptElementKind.memberVariableElement, ['?.title']);
+      expectReplacementText(completions, templateFile.contents, '.title');
+    });
+
+    it('should be able to complete on NonNullable symbol', () => {
+      const {templateFile} = setup('{{article.title}}', `article: { title: string };`);
+      templateFile.moveCursorToText('{{article.title¦}}');
+      const completions = templateFile.getCompletionsAtPosition({
+        includeCompletionsWithInsertText: true,
+        includeAutomaticOptionalChainCompletions: true,
+      });
+      expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['title']);
+      expectReplacementText(completions, templateFile.contents, 'title');
+    });
+
+    it('should not shift the start location when the user has input the optional chaining', () => {
+      const {templateFile} = setup('{{article?.title}}', `article?: { title: string };`);
+      templateFile.moveCursorToText('{{article?.title¦}}');
+      const completions = templateFile.getCompletionsAtPosition({
+        includeCompletionsWithInsertText: true,
+        includeAutomaticOptionalChainCompletions: true,
+      });
+      expectContain(completions, ts.ScriptElementKind.memberVariableElement, ['title']);
+      expectReplacementText(completions, templateFile.contents, 'title');
+    });
+  });
 });
+
+function expectContainInsertText(
+    completions: ts.CompletionInfo|undefined, kind: ts.ScriptElementKind|DisplayInfoKind,
+    insertTexts: string[]) {
+  expect(completions).toBeDefined();
+  for (const insertText of insertTexts) {
+    expect(completions!.entries).toContain(jasmine.objectContaining({insertText, kind} as any));
+  }
+}
 
 function expectContain(
     completions: ts.CompletionInfo|undefined, kind: ts.ScriptElementKind|DisplayInfoKind,

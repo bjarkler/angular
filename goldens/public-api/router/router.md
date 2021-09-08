@@ -182,7 +182,6 @@ export type DetachedRouteHandle = {};
 
 // @public
 type Event_2 = RouterEvent | RouteConfigLoadStart | RouteConfigLoadEnd | ChildActivationStart | ChildActivationEnd | ActivationStart | ActivationEnd | Scroll;
-
 export { Event_2 as Event }
 
 // @public
@@ -468,6 +467,7 @@ export class RouteConfigLoadStart {
 // @public
 export class Router {
     constructor(rootComponentType: Type<any> | null, urlSerializer: UrlSerializer, rootContexts: ChildrenOutletContexts, location: Location_2, injector: Injector, loader: NgModuleFactoryLoader, compiler: Compiler, config: Routes);
+    canceledNavigationResolution: 'replace' | 'computed';
     // (undocumented)
     config: Routes;
     createUrlTree(commands: any[], navigationExtras?: UrlCreationOptions): UrlTree;
@@ -525,7 +525,7 @@ export class RouterEvent {
 
 // @public
 export class RouterLink implements OnChanges {
-    constructor(router: Router, route: ActivatedRoute, tabIndex: string, renderer: Renderer2, el: ElementRef);
+    constructor(router: Router, route: ActivatedRoute, tabIndexAttribute: string | null | undefined, renderer: Renderer2, el: ElementRef);
     fragment?: string;
     // (undocumented)
     ngOnChanges(changes: SimpleChanges): void;
@@ -542,7 +542,7 @@ export class RouterLink implements OnChanges {
         [k: string]: any;
     };
     // (undocumented)
-    get urlTree(): UrlTree;
+    get urlTree(): UrlTree | null;
 }
 
 // @public
@@ -550,6 +550,7 @@ export class RouterLinkActive implements OnChanges, OnDestroy, AfterContentInit 
     constructor(router: Router, element: ElementRef, renderer: Renderer2, cdr: ChangeDetectorRef, link?: RouterLink | undefined, linkWithHref?: RouterLinkWithHref | undefined);
     // (undocumented)
     readonly isActive: boolean;
+    readonly isActiveChange: EventEmitter<boolean>;
     // (undocumented)
     links: QueryList<RouterLink>;
     // (undocumented)
@@ -565,14 +566,14 @@ export class RouterLinkActive implements OnChanges, OnDestroy, AfterContentInit 
     routerLinkActiveOptions: {
         exact: boolean;
     } | IsActiveMatchOptions;
-    }
+}
 
 // @public
 export class RouterLinkWithHref implements OnChanges, OnDestroy {
     constructor(router: Router, route: ActivatedRoute, locationStrategy: LocationStrategy);
     fragment?: string;
     // (undocumented)
-    href: string;
+    href: string | null;
     // (undocumented)
     ngOnChanges(changes: SimpleChanges): any;
     // (undocumented)
@@ -592,7 +593,7 @@ export class RouterLinkWithHref implements OnChanges, OnDestroy {
     // (undocumented)
     target: string;
     // (undocumented)
-    get urlTree(): UrlTree;
+    get urlTree(): UrlTree | null;
 }
 
 // @public
@@ -627,16 +628,18 @@ export class RouterOutlet implements OnDestroy, OnInit, RouterOutletContract {
     ngOnDestroy(): void;
     // (undocumented)
     ngOnInit(): void;
-    }
+}
 
 // @public
 export interface RouterOutletContract {
     activatedRoute: ActivatedRoute | null;
     activatedRouteData: Data;
+    activateEvents?: EventEmitter<unknown>;
     activateWith(activatedRoute: ActivatedRoute, resolver: ComponentFactoryResolver | null): void;
     attach(ref: ComponentRef<unknown>, activatedRoute: ActivatedRoute): void;
     component: Object | null;
     deactivate(): void;
+    deactivateEvents?: EventEmitter<unknown>;
     detach(): ComponentRef<unknown>;
     isActivated: boolean;
 }
@@ -650,7 +653,7 @@ export class RouterPreloader implements OnDestroy {
     preload(): Observable<any>;
     // (undocumented)
     setUpPreloading(): void;
-    }
+}
 
 // @public
 export class RouterState extends ɵangular_packages_router_router_m<ActivatedRoute> {
@@ -787,7 +790,6 @@ export class UrlTree {
 
 // @public (undocumented)
 export const VERSION: Version;
-
 
 // (No @packageDocumentation comment for this package)
 
