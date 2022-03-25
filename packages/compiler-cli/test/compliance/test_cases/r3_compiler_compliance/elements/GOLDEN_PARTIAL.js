@@ -635,6 +635,7 @@ MyComponent.ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "12.0.0", version: "
     <embed src="https://angular.io/" />
     <iframe srcdoc="<h1>Angular</h1>"></iframe>
     <object data="https://angular.io/" codebase="/"></object>
+    <img src="https://angular.io/" onload="console.log('loaded')" />
 
     <!-- Repeated element to make sure attribute deduplication works properly -->
     <embed src="https://angular.io/" />
@@ -651,6 +652,7 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDE
     <embed src="https://angular.io/" />
     <iframe srcdoc="<h1>Angular</h1>"></iframe>
     <object data="https://angular.io/" codebase="/"></object>
+    <img src="https://angular.io/" onload="console.log('loaded')" />
 
     <!-- Repeated element to make sure attribute deduplication works properly -->
     <embed src="https://angular.io/" />

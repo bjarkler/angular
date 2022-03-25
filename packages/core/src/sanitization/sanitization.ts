@@ -12,7 +12,7 @@ import {SANITIZER} from '../render3/interfaces/view';
 import {getLView} from '../render3/state';
 import {renderStringify} from '../render3/util/stringify_utils';
 import {TrustedHTML, TrustedScript, TrustedScriptURL} from '../util/security/trusted_type_defs';
-import {trustedHTMLFromString, trustedScriptURLFromString} from '../util/security/trusted_types';
+import {trustedHTMLFromString, trustedScriptFromString, trustedScriptURLFromString} from '../util/security/trusted_types';
 import {trustedHTMLFromStringBypass, trustedScriptFromStringBypass, trustedScriptURLFromStringBypass} from '../util/security/trusted_types_bypass';
 
 import {allowSanitizationBypassAndThrow, BypassType, unwrapSafeValue} from './bypass';
@@ -175,6 +175,32 @@ export function ɵɵtrustConstantHtml(html: TemplateStringsArray): TrustedHTML|s
     throw new Error(`Unexpected interpolation in trusted HTML constant: ${html.join('?')}`);
   }
   return trustedHTMLFromString(html[0]);
+}
+
+/**
+ * A template tag function for promoting the associated constant literal to a
+ * TrustedScript. Interpolation is explicitly not allowed.
+ *
+ * @param script constant template literal containing a trusted script.
+ * @returns TrustedScript wrapping `script`.
+ *
+ * @security This is a security-sensitive function and should only be used to
+ * convert constant values of attributes and properties found in
+ * application-provided Angular templates to TrustedScript.
+ *
+ * @codeGenApi
+ */
+export function ɵɵtrustConstantScript(script: TemplateStringsArray): TrustedScript|string {
+  // The following runtime check ensures that the function was called as a
+  // template tag (e.g. ɵɵtrustConstantScript`content`), without any interpolation
+  // (e.g. not ɵɵtrustConstantScript`content ${variable}`). A TemplateStringsArray
+  // is an array with a `raw` property that is also an array. The associated
+  // template literal has no interpolation if and only if the length of the
+  // TemplateStringsArray is 1.
+  if (ngDevMode && (!Array.isArray(script) || !Array.isArray(script.raw) || script.length !== 1)) {
+    throw new Error(`Unexpected interpolation in trusted script constant: ${script.join('?')}`);
+  }
+  return trustedScriptFromString(script[0]);
 }
 
 /**

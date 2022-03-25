@@ -2182,6 +2182,24 @@ function trustedConstAttribute(tagName: string, attr: t.TextAttribute): o.Expres
       default:
         return value;
     }
+  } else if (/^on/i.test(attr.name)) {
+    // To be compatible with Trusted Types, inline event handlers must be
+    // specified as TrustedScript. Inline event handlers that are specified as
+    // constant strings in Angular templates are safe to promote to a
+    // TrustedScript as they are completely application developer controlled. If
+    // developers want to disallow inline event handlers they can enforce a
+    // Content Security Policy that does not include the 'unsafe-inline'
+    // directive.
+    // NB: All attributes that start with 'on' (e.g. 'onload' or 'onerror') are
+    // promoted to a TrustedScript, even though they are not necessarily an
+    // inline event handler (e.g. 'online' or 'one'). This is not security
+    // sensitive and will essentially be a no-op as the values get stringified.
+    // This is done to work around a Chromium bug (https://crbug.com/993268) and
+    // minimize code size.
+    return o.taggedTemplate(
+        o.importExpr(R3.trustConstantScript),
+        new o.TemplateLiteral([new o.TemplateLiteralElement(attr.value)], []), undefined,
+        attr.valueSpan);
   } else {
     return value;
   }

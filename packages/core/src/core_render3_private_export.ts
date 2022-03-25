@@ -267,6 +267,7 @@ export {
   ɵɵsanitizeUrl,
   ɵɵsanitizeUrlOrResourceUrl,
   ɵɵtrustConstantHtml,
+  ɵɵtrustConstantScript,
   ɵɵtrustConstantResourceUrl,
 } from './sanitization/sanitization';
 export {
